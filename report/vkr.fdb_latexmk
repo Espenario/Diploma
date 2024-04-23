@@ -1,12 +1,12 @@
 # Fdb version 4
-["biber vkr"] 0 "vkr.bcf" "vkr.bbl" "vkr" 1713873120.41253 -1
-  "biblio.bib" 1713720246 1522 6a9b186afdfb1f88fb61c69e3650154a ""
-  "vkr.bcf" 1713873120 155307 52b20e8d284b4d7136a6a39f2156cced "pdflatex"
+["biber vkr"] 1713874936.47049 "vkr.bcf" "vkr.bbl" "vkr" 1713874944.36135 0
+  "biblio.bib" 1713874936 415 0004b5d5a5fa56e12178d49171da16ad ""
+  "vkr.bcf" 1713874943 155307 52b20e8d284b4d7136a6a39f2156cced "pdflatex"
   (generated)
   "vkr.bbl"
   "vkr.blg"
   (rewritten before read)
-["pdflatex"] 1713873117.35535 "e:/univer/Diploma/report/vkr.tex" "vkr.pdf" "vkr" 1713873120.41345 0
+["pdflatex"] 1713874941.31288 "e:/univer/Diploma/report/vkr.tex" "vkr.pdf" "vkr" 1713874944.36181 0
   "C:/Users/Pig_Astronaut/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1713723134 93067 de747fddbd6062e4ffaab521e8e501ad ""
   "C:/Users/Pig_Astronaut/AppData/Local/MiKTeX/fonts/pk/ljfour/lh/lh-t2a/dpi600/latt1440.pk" 1695068497 27384 5d9e7bad6ed84988a5a5c8bcfaec7292 ""
   "C:/Users/Pig_Astronaut/AppData/Local/MiKTeX/fonts/tfm/lh/lh-t2a/lass2074.tfm" 1713709772 3328 d279ddfe9733cd3d5efc50ce4ddf7387 ""
@@ -282,12 +282,12 @@
   "e:/univer/Diploma/report/vkr.tex" 1713873113 83401 d82567f31ea507bce4f8bff3e70b69bb ""
   "images/emblem.png" 1676995595 629034 a838baaf09b8caa73cd4225b6b334ff5 ""
   "images/img1.png" 1713811341 172969 b2428e59fd12f76fe6534c78e0f0ecd9 ""
-  "vkr.aux" 1713873120 8492 50300a3e556793edfbb19f72b88e7129 "pdflatex"
-  "vkr.bbl" 1713870992 3493 8443616871707df23372d7b02169f77c "biber vkr"
-  "vkr.out" 1713873119 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
-  "vkr.run.xml" 1713873120 2552 92570a3d4cc5de73d34c29d7fd4af7a7 "pdflatex"
+  "vkr.aux" 1713874943 8287 77d43e46f278c9bafe60614f860c3525 "pdflatex"
+  "vkr.bbl" 1713874938 486 76d65a242ec496c9b4361af646ff12cb "biber vkr"
+  "vkr.out" 1713874943 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
+  "vkr.run.xml" 1713874944 2552 883b8821895eb61e027ddf139380c562 "pdflatex"
   "vkr.tex" 1713873113 83401 d82567f31ea507bce4f8bff3e70b69bb ""
-  "vkr.toc" 1713873120 1826 bce7f3e354560d67c3391df3abc82fa6 "pdflatex"
+  "vkr.toc" 1713874944 1826 9541f0d3df7a76109d0f36112649939a "pdflatex"
   (generated)
   "vkr.aux"
   "vkr.bcf"

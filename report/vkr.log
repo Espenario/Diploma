@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (MiKTeX 24.3.31) (preloaded format=pdflatex 2024.4.21)  23 APR 2024 14:51
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (MiKTeX 24.3.31) (preloaded format=pdflatex 2024.4.21)  23 APR 2024 15:22
 entering extended mode
  \write18 enabled.
  file:line:error style messages enabled.
@@ -2782,6 +2782,15 @@ Package pdftex.def Info: ./images/img1.png  used on input line 724.
 
 ] [17.17] [18.18] [19.19]
 
+LaTeX Warning: Citation 'Normcor' on page 20 undefined on input line 921.
+
+
+LaTeX Warning: Citation 'LaTeX2e' on page 20 undefined on input line 921.
+
+
+LaTeX Warning: Citation 'Stackexchange' on page 20 undefined on input line 921.
+
+
 LaTeX Warning: Reference `fig:example1' on page 20 undefined on input line 921.
 
 
@@ -2790,10 +2799,10 @@ LaTeX Warning: Reference `fig::thesis' on page 20 undefined on input line 923.
 [20.20
 
 
-] [21.21
-
-
 ]
+
+LaTeX Warning: Empty bibliography on input line 932.
+
 
 Package caption Warning: Unused \captionsetup[listing] on input line 15.
 See the caption package documentation for explanation.
@@ -2802,7 +2811,8 @@ See the caption package documentation for explanation.
 Package caption Warning: Unused \captionsetup[subfigure] on input line 264.
 See the caption package documentation for explanation.
 
-[22.22
+[21.21
+
 
 
 ] (vkr.aux)
@@ -2820,22 +2830,27 @@ LaTeX Warning: There were undefined references.
 
 Package rerunfilecheck Info: File `vkr.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
+
+Package biblatex Warning: Please (re)run Biber on the file:
+(biblatex)                vkr
+(biblatex)                and rerun LaTeX afterwards.
+
 Package logreq Info: Writing requests to 'vkr.run.xml'.
 \openout1 = `vkr.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 37565 strings out of 474423
- 685423 string characters out of 5737942
+ 37513 strings out of 474423
+ 684110 string characters out of 5737942
  1940496 words of memory out of 5000000
- 59128 multiletter control sequences out of 15000+600000
+ 59080 multiletter control sequences out of 15000+600000
  608373 words of font info for 115 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  108i,10n,107p,10948b,3211s stack positions out of 10000i,1000n,20000p,200000b,200000s
  <C:\Users\Pig_Astronaut\AppData\Local\MiKTeX\fonts/pk/ljfour/lh/lh-t2a/dpi600\latt1440.pk><C:/Users/Pig_Astronaut/AppData/Local/Programs/MiKTeX/fonts/type1/public/tempora/Tempora-Bold.pfb><C:/Users/Pig_Astronaut/AppData/Local/Programs/MiKTeX/fonts/type1/public/tempora/Tempora-BoldItalic.pfb><C:/Users/Pig_Astronaut/AppData/Local/Programs/MiKTeX/fonts/type1/public/tempora/Tempora-Italic.pfb><C:/Users/Pig_Astronaut/AppData/Local/Programs/MiKTeX/fonts/type1/public/tempora/Tempora-Regular.pfb><C:/Users/Pig_Astronaut/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/Pig_Astronaut/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi12.pfb><C:/Users/Pig_Astronaut/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr10.pfb><C:/Users/Pig_Astronaut/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr12.pfb><C:/Users/Pig_Astronaut/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/Pig_Astronaut/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on vkr.pdf (22 pages, 826491 bytes).
+Output written on vkr.pdf (21 pages, 825738 bytes).
 PDF statistics:
- 283 PDF objects out of 1000 (max. 8388607)
- 66 named destinations out of 1000 (max. 500000)
+ 271 PDF objects out of 1000 (max. 8388607)
+ 62 named destinations out of 1000 (max. 500000)
  83 words of extra memory for PDF output out of 10000 (max. 10000000)
 
