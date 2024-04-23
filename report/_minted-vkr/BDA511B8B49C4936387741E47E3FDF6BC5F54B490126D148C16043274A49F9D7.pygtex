@@ -1,0 +1,5 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{\PYGZbs{}usepackage}[backend=biber,
+    bibstyle=gost\PYGZhy{}numeric,
+    citestyle=nature]\PYG{n+nb}{\PYGZob{}}biblatex\PYG{n+nb}{\PYGZcb{}}
+\end{Verbatim}

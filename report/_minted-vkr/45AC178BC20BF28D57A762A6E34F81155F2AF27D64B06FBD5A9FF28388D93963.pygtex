@@ -1,0 +1,9 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k+kt}{int}\PYG{+w}{ }\PYG{n+nf}{main}\PYG{p}{()\PYGZob{}}
+\PYG{c+cm}{/* /\PYGZbs{}\PYGZhy{}\PYGZhy{}\PYGZhy{}/\PYGZbs{} */}
+\PYG{c+cm}{/* \PYGZbs{} O O / */}
+\PYG{c+cm}{/*  \PYGZbs{} Y /  */}
+\PYG{c+cm}{/*   \PYGZhy{}\PYGZhy{}\PYGZhy{}   */}
+\PYG{c+cm}{/* Этот комментарий разрешён на территории РФ */}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}

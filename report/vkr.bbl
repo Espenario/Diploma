@@ -1,0 +1,83 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{none/global//global/global/global}
+    \entry{Normcor}{misc}{}{}
+      \list{publisher}{1}{%
+        {МГТУ им. Н.Э. Баумана}%
+      }
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labeltitlesource}{title}
+      \field{annotation}{дата обращения: 20.07.2021}
+      \field{title}{Самораспаковывающийся архив "ПРИЛОЖЕНИЕ 1 К ПОЛОЖЕНИЮ О нормоконтроле, размещении текстов в электронно-библиотечной системе и проверке на объем заимствования выпускных квалификационных работ бакалавров, специалистов, магистров и аспирантов МГТУ им. Н. Э. Баумана ИНСТРУКЦИЯ ПО РАБОТЕ С ЭЛЕКТРОННО-БИБЛИОТЕЧНОЙ СИСТЕМОЙ <<БАНК ВКР>>"}
+      \verb{urlraw}
+      \verb http://vkr.bmstu.ru/
+      \endverb
+      \verb{url}
+      \verb http://vkr.bmstu.ru/
+      \endverb
+    \endentry
+    \entry{LaTeX2e}{book}{}{}
+      \name{author}{1}{}{%
+        {{hash=2e0635297c872410c2a240b855085f04}{%
+           family={Львовский},
+           familyi={Л\bibinitperiod},
+           given={С.\bibnamedelimi М.},
+           giveni={С\bibinitperiod\bibinitdelim М\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Москва}%
+      }
+      \list{publisher}{1}{%
+        {Московский центр непрерывного математического образования}%
+      }
+      \strng{namehash}{2e0635297c872410c2a240b855085f04}
+      \strng{fullhash}{2e0635297c872410c2a240b855085f04}
+      \strng{fullhashraw}{2e0635297c872410c2a240b855085f04}
+      \strng{bibnamehash}{2e0635297c872410c2a240b855085f04}
+      \strng{authorbibnamehash}{2e0635297c872410c2a240b855085f04}
+      \strng{authornamehash}{2e0635297c872410c2a240b855085f04}
+      \strng{authorfullhash}{2e0635297c872410c2a240b855085f04}
+      \strng{authorfullhashraw}{2e0635297c872410c2a240b855085f04}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Набор и верстка в системе LaTeX}
+      \field{year}{2003}
+    \endentry
+    \entry{Stackexchange}{misc}{}{}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{labeltitlesource}{title}
+      \field{annotation}{дата обращения: 22.07.2021}
+      \field{title}{StackExchange [Электронный ресурс]}
+      \verb{urlraw}
+      \verb https://tex.stackexchange.com/
+      \endverb
+      \verb{url}
+      \verb https://tex.stackexchange.com/
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
