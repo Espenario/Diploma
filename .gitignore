@@ -17,3 +17,7 @@ report/NIR/vkr_nir.fls
 report/NIR/vkr_nir.log
 report/NIR/vkr_nir.synctex.gz
 report/NIR/vkr_nir.toc
+code/__pycache__/dataset_loader.cpython-311.pyc
+code/__pycache__/datasets.cpython-311.pyc
+code/__pycache__/pipelines.cpython-311.pyc
+code/__pycache__/utils.cpython-311.pyc

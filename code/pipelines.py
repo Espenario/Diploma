@@ -1,14 +1,15 @@
 from dataset_loader import get_dataset
 from datasets import HyperSpectralData
+from onn_model import OnnModel
+import numpy as np
 
-
-class HyperPipeline(): 
+class HyperPipeline():
     """Base class for models pipeline"""
 
-    def __init__(self, dataset_name = 'PaviaU', load_folder = "./datasets"):
-        self.dataset_name = dataset_name
-        self.load_folder = load_folder
-    
+    def __init__(self):
+        """some txt"""
+        pass
+   
     def load_and_prepare_data(self):
         """some txt"""
         pass
@@ -28,13 +29,15 @@ class HyperPipeline():
 class OnnHyperPipeline(HyperPipeline):
     """Pipeline class for implementing ONN workflow"""
 
-    def __init__(self, dataset_name='PaviaU', load_folder="./datasets"):
-        super().__init__(dataset_name, load_folder)
+    def __init__(self):
+        super().__init__()
         self.dataset: HyperSpectralData
+        self.model: OnnModel
+        self.result: np.array
 
-    def load_and_prepare_data(self):
+    def add_dataset(self, dataset_name='PaviaU', load_folder="./datasets"):
         """some txt"""
-        data, gt, labels, ignored_labels, rgb_bands, palette, num_of_bands = get_dataset(self.dataset_name, self.load_folder)
+        data, gt, labels, ignored_labels, rgb_bands, palette, num_of_bands = get_dataset(dataset_name, load_folder)
         params = {'labels': labels, 
                   'ignored_labels': ignored_labels,
                   'rbg_bands': rgb_bands,
@@ -45,3 +48,20 @@ class OnnHyperPipeline(HyperPipeline):
     def get_data_info(self):
         """some txt"""
         self.dataset.get_data_info()
+        self.dataset.view_data()
+    
+    def specify_target_class(self, target_class: str):
+        """some txt"""
+        self.dataset.specify_target_class(target_class)
+
+    def select_chanels(self, method = "expert"):
+        """some txt"""
+
+
+    def add_model(self, model):
+        """some txt"""
+        self.model = model
+
+    def run(self):
+        """some txt"""
+        self.result = self.model.run(self.dataset)

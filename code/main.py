@@ -1,13 +1,16 @@
 from pipelines import OnnHyperPipeline
+from onn_model import OnnModel
 
 
 def main():
     """some txt"""
-    onn_pipe = OnnHyperPipeline(dataset_name='PaviaU')
-    onn_pipe.load_and_prepare_data()
-    # onn_pipe.get_data_info()
-    onn_pipe.dataset.view_data()
-    onn_pipe.dataset.create_samples()
+    onn_pipe = OnnHyperPipeline()
+
+    onn_pipe.add_dataset(dataset_name='PaviaU')
+
+    onn_pipe.add_model(OnnModel())
+    
+    onn_pipe.run()
 
 
 if __name__ == "__main__":
