@@ -37,7 +37,8 @@ class OnnHyperPipeline(HyperPipeline):
 
     def add_dataset(self, dataset_name='PaviaU', load_folder="./datasets"):
         """some txt"""
-        data, gt, labels, ignored_labels, rgb_bands, palette, num_of_bands = get_dataset(dataset_name, load_folder)
+        data, gt, labels, ignored_labels, \
+        rgb_bands, palette, num_of_bands = get_dataset(dataset_name, load_folder)
         params = {'labels': labels, 
                   'ignored_labels': ignored_labels,
                   'rbg_bands': rgb_bands,
@@ -54,14 +55,22 @@ class OnnHyperPipeline(HyperPipeline):
         """some txt"""
         self.dataset.specify_target_class(target_class)
 
+    def create_samples(self):
+        """some txt"""
+        self.dataset.create_samples()
+
     def select_chanels(self, method = "expert"):
         """some txt"""
-
+        self.dataset.select_chanels(method)
 
     def add_model(self, model):
         """some txt"""
         self.model = model
 
-    def run(self):
+    def run(self, target_class: str, method: str = "expert"):
         """some txt"""
+        self.specify_target_class(target_class)
+        self.select_chanels(method)
+        self.create_samples()
+
         self.result = self.model.run(self.dataset)

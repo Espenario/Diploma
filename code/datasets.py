@@ -2,7 +2,7 @@ import torch
 import torch.utils
 import torch.utils.data
 import numpy as np
-from utils import display_image, explore_spectrums, build_dataset
+from utils import display_image, explore_spectrums, build_dataset, select_best_spectrums
 
 
 class HyperSpectralTorchData(torch.utils.data.Dataset):
@@ -137,6 +137,8 @@ class HyperSpectralData():
         self.num_bands = params['num_of_bands']
         self.samples: np.array
         self.labels: np.array
+        self.selected_bands: np.array
+        self.target_class: str
     
     def get_data_info(self):
         print(f'Data image dimensions is {self.data.shape} ')
@@ -146,10 +148,28 @@ class HyperSpectralData():
         """Shows hyperspectral image with 3 sample spectrums and rgb"""
         display_image(self.data[0], self.rgb, np.random.randint(1, self.num_bands, size=3))
         # _ = explore_spectrums(self.data[0], self.gt, self.labels)
+    
+    def select_chanels(self, method = "expert"):
+        """some txt"""
+        if method == "expert":
+            self.selected_bands = [55, 41, 12]
+        if method == "simple_opt":
+            sel_bands = select_best_spectrums(
+                img = self.data[0],
+                complete_gt = self.gt,
+                target_class = self.target_class
+            )
+            self.selected_bands = sel_bands
+        if method == "advanced":
+            self.selected_bands = [[55, 41, 12]]
+
 
     def create_samples(self):
         """some txt"""
-        self.samples, self.labels = build_dataset(self.data[0], self.gt)
+        self.samples, self.labels = build_dataset(self.data[0],
+                                                  self.gt, 
+                                                  self.selected_bands,
+                                                  self.target_class)
         # print(self.samples[0], labels[0])'
 
     def specify_target_class(self, target: str):
@@ -158,6 +178,6 @@ class HyperSpectralData():
             target in self.labels
         except Exception as e:
             raise ValueError("Объект для сегментации не представлен в данном датасете") from e
-        
+        self.target_class = target
 
         

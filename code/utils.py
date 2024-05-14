@@ -174,6 +174,14 @@ def plot_spectrums(spectrums, vis, title=""):
         win = vis.line(X=np.arange(n_bands), Y=v, name=k, win=win, update=update,
                        opts={'title': title})
 
+def select_best_spectrums(img, complete_gt, target_class):
+    """some txt"""
+    best_spectrums = []
+    
+    mask = complete_gt == target_class
+    class_spectrums = img[mask].reshape(-1, img.shape[-1])
+    return best_spectrums
+
 
 def build_dataset(mat, gt, ignored_labels=[]):
     """Create a list of training samples based on an image and a mask.
