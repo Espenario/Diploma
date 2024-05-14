@@ -157,7 +157,8 @@ class HyperSpectralData():
             sel_bands = select_best_spectrums(
                 img = self.data[0],
                 complete_gt = self.gt,
-                target_class = self.target_class
+                target_class = self.target_class,
+                labels = self.labels
             )
             self.selected_bands = sel_bands
         if method == "advanced":

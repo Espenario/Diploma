@@ -3,3 +3,5 @@ numpy
 tqdm
 spectral
 scikit-learn
+seaborn
+imageio

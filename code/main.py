@@ -10,7 +10,9 @@ def main():
 
     onn_pipe.add_model(OnnModel())
     
-    onn_pipe.run()
+    onn_pipe.specify_target_class(target_class='Asphalt')
+    onn_pipe.select_chanels(method = 'simple_opt')
+    # onn_pipe.run()
 
 
 if __name__ == "__main__":

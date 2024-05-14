@@ -174,12 +174,14 @@ def plot_spectrums(spectrums, vis, title=""):
         win = vis.line(X=np.arange(n_bands), Y=v, name=k, win=win, update=update,
                        opts={'title': title})
 
-def select_best_spectrums(img, complete_gt, target_class):
+def select_best_spectrums(img, complete_gt, target_class: str, labels: list):
     """some txt"""
     best_spectrums = []
-    
-    mask = complete_gt == target_class
+
+    target_class_id = labels.index(target_class)
+    mask = complete_gt == target_class_id
     class_spectrums = img[mask].reshape(-1, img.shape[-1])
+
     return best_spectrums
 
 
