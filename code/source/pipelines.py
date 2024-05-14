@@ -1,6 +1,6 @@
-from dataset_loader import get_dataset
-from datasets import HyperSpectralData
-from onn_model import OnnModel
+from source.dataset_loader import get_dataset
+from source.datasets import HyperSpectralData
+from source.onn_model import OnnModel
 import numpy as np
 
 class HyperPipeline():
@@ -59,7 +59,7 @@ class OnnHyperPipeline(HyperPipeline):
         """some txt"""
         self.dataset.create_samples()
 
-    def select_chanels(self, method = "expert"):
+    def select_chanels(self, method = "expert", n = 4):
         """some txt"""
         self.dataset.select_chanels(method)
 

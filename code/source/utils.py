@@ -173,15 +173,31 @@ def plot_spectrums(spectrums, vis, title=""):
         update = None if win is None else 'append'
         win = vis.line(X=np.arange(n_bands), Y=v, name=k, win=win, update=update,
                        opts={'title': title})
-
-def select_best_spectrums(img, complete_gt, target_class: str, labels: list):
+        
+def find_n_most_varying(spect_means: dict, n = 4):
     """some txt"""
-    best_spectrums = []
+    means = np.fromiter(spect_means.keys(), dtype=float)
+    means.sort()
+    selected_values = np.concatenate([means[0:n//2], means[-(n//2):]])
+    return list(map(lambda x: spect_means[x], selected_values))
 
+def select_best_spectrums(img:np.array,
+                          complete_gt, 
+                          target_class: str, 
+                          labels: list,
+                          n:int = 4):
+    """some txt"""
     target_class_id = labels.index(target_class)
     mask = complete_gt == target_class_id
     class_spectrums = img[mask].reshape(-1, img.shape[-1])
 
+    spect_means = {}
+    class_spectrums = np.array([class_spectrums[:, i] for i in 
+                                                      range(class_spectrums.shape[1])])
+    for i, spectrum in enumerate(class_spectrums[:,:]):
+        spect_means[np.mean(spectrum, axis=0)] = i
+
+    best_spectrums = find_n_most_varying(spect_means, n)
     return best_spectrums
 
 

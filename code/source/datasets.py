@@ -2,7 +2,7 @@ import torch
 import torch.utils
 import torch.utils.data
 import numpy as np
-from utils import display_image, explore_spectrums, build_dataset, select_best_spectrums
+from source.utils import display_image, explore_spectrums, build_dataset, select_best_spectrums
 
 
 class HyperSpectralTorchData(torch.utils.data.Dataset):
@@ -149,7 +149,7 @@ class HyperSpectralData():
         display_image(self.data[0], self.rgb, np.random.randint(1, self.num_bands, size=3))
         # _ = explore_spectrums(self.data[0], self.gt, self.labels)
     
-    def select_chanels(self, method = "expert"):
+    def select_chanels(self, method = "expert", n = 4):
         """some txt"""
         if method == "expert":
             self.selected_bands = [55, 41, 12]
@@ -158,10 +158,11 @@ class HyperSpectralData():
                 img = self.data[0],
                 complete_gt = self.gt,
                 target_class = self.target_class,
-                labels = self.labels
+                labels = self.labels,
+                n = n
             )
             self.selected_bands = sel_bands
-        if method == "advanced":
+        if method == "advanced_opts":
             self.selected_bands = [[55, 41, 12]]
 
 

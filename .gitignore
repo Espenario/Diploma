@@ -26,3 +26,5 @@ code/__pycache__/datasets.cpython-310.pyc
 code/__pycache__/onn_model.cpython-310.pyc
 code/__pycache__/pipelines.cpython-310.pyc
 code/__pycache__/utils.cpython-310.pyc
+code/source/__pycache__/*
+code/tests/__pycache__/*

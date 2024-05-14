@@ -7,7 +7,7 @@ import os
 from tqdm import tqdm
 from sklearn import preprocessing
 from urllib.request import urlretrieve
-from utils import open_file
+from source.utils import open_file
 
 
 DATASETS_CONFIG = {

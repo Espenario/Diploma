@@ -1,5 +1,5 @@
-from pipelines import OnnHyperPipeline
-from onn_model import OnnModel
+from source.pipelines import OnnHyperPipeline
+from source.onn_model import OnnModel
 
 
 def main():
@@ -9,9 +9,10 @@ def main():
     onn_pipe.add_dataset(dataset_name='PaviaU')
 
     onn_pipe.add_model(OnnModel())
-    
+
     onn_pipe.specify_target_class(target_class='Asphalt')
     onn_pipe.select_chanels(method = 'simple_opt')
+    print(onn_pipe.dataset.selected_bands)
     # onn_pipe.run()
 
 
