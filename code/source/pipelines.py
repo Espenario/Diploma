@@ -35,7 +35,7 @@ class OnnHyperPipeline(HyperPipeline):
         self.model: OnnModel
         self.result: np.array
 
-    def add_dataset(self, dataset_name='PaviaU', load_folder="/home/dima/Документы/Diploma/code/datasets"):
+    def add_dataset(self, dataset_name='PaviaU', load_folder="./datasets"):
         """some txt"""
         data, gt, labels, ignored_labels, \
         rgb_bands, palette, num_of_bands = get_dataset(dataset_name, load_folder)

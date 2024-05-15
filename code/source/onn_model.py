@@ -1,4 +1,5 @@
 import numpy as np
+from source.datasets import HyperSpectralData
 
 
 class OnnModel():
@@ -7,9 +8,8 @@ class OnnModel():
     def __init__(self, model_name = "3_module_Onn") -> None:
         """some txt"""
         self.model_name = model_name
-        pass
     
-    def run(self, dataset: dict):
+    def run(self, dataset: HyperSpectralData):
         """some txt"""
-        print(dataset)
-        return np.asarray([self.model_name, dataset.keys()])
+        # print(dataset)
+        return self.model_name, dataset.samples, dataset.samples_labels

@@ -206,13 +206,18 @@ def build_dataset(mat: np.array,
                   gt,
                   selected_bands:list,
                   target_class:str,
-                  labels:list):
-    """Create a list of training samples based on an image and a mask.
+                  labels:list,
+                  num_samples:int = 3,
+                  threshold:int = 100):
+    """Create a list of training samples based on an image, target class and selected spectral bands.
     Args:
         mat: 3D hyperspectral matrix to extract the spectrums from
         gt: 2D ground truth
-        ignored_labels (optional): list of classes to ignore, e.g. 0 to remove
-        unlabeled pixels
+        selected_bands: list of number of bands, from which select samples
+        target_class: name of target_class, a lot of samples should have this class on it
+        labels: list of labels
+        num_samples: number of randomly cropped 100x100 images from mat
+        threshold: minimum number of pixels of target class
     """
     samples = []
     samples_labels = []
@@ -220,12 +225,34 @@ def build_dataset(mat: np.array,
     assert mat.shape[:2] == gt.shape[:2]
 
     target_class_id = labels.index(target_class)
+    height = mat.shape[0]
+    width = mat.shape[1]
     mask = np.nonzero(gt == target_class_id)
 
-    print(mask)
-    samples = mat[mask].reshape()
-    samples = np.array([samples[:, i] for i in 
-                                      range(samples.shape[1]) if i in selected_bands])
-    samples_labels += len(mask[0]) * [target_class_id]
+    sample_height, sample_width = 100, 100
+    successfuly_generated_samples = 0
+    while successfuly_generated_samples < num_samples:
+        
+        # Ensure the sample size is not larger than the image
+        sample_height = min(sample_height, height)
+        sample_width = min(sample_width, width)
+
+        # Randomly select the top left pixel of the part you want to sample
+        start_x = random.randint(0, width - sample_width)
+        start_y = random.randint(0, height - sample_height)
+
+        # Verify that target class is represented at random sample
+        if len(list(set(np.arange(start_y,start_y+sample_height)) & set(mask[0]))) + \
+           len(list(set(np.arange(start_x,start_x+sample_width)) & set(mask[1]))) > threshold:
+            # Sample the part of the image
+            samples.append(mat[start_y:start_y+sample_height, start_x:start_x+sample_width, :])
+            samples_labels.append([list(set(np.arange(start_y,start_y+sample_height)) & set(mask[0])),
+                                   list(set(np.arange(start_x,start_x+sample_width)) & set(mask[1]))])
+            successfuly_generated_samples += 1
+    
+    samples = np.asarray(samples)
+
+    samples = np.array([samples[:, :, :, i] for i in 
+                                      range(samples.shape[3]) if i in selected_bands])
     
     return np.asarray(samples), np.asarray(samples_labels)

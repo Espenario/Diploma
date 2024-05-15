@@ -136,7 +136,7 @@ class HyperSpectralData():
         self.rgb = params['rbg_bands']
         self.num_bands = params['num_of_bands']
         self.samples: np.array
-        self.labels: np.array
+        self.samples_labels: np.array
         self.selected_bands: np.array
         self.target_class: str
     
@@ -168,7 +168,7 @@ class HyperSpectralData():
 
     def create_samples(self):
         """some txt"""
-        self.samples, self.labels = build_dataset(self.data[0],
+        self.samples, self.samples_labels = build_dataset(self.data[0],
                                                   self.gt, 
                                                   self.selected_bands,
                                                   self.target_class,
