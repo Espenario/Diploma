@@ -59,7 +59,7 @@ class TqdmUpTo(tqdm):
         self.update(b * bsize - self.n)  # will also set self.n = b * bsize
 
 
-def get_dataset(dataset_name, target_folder="./datasets", datasets=DATASETS_CONFIG):
+def get_dataset(dataset_name, target_folder="/home/dima/Документы/Diploma/code/datasets", datasets=DATASETS_CONFIG):
     """ Gets the dataset specified by name and return the related components.
     Args:
         dataset_name: string with the name of the dataset

@@ -163,7 +163,7 @@ class HyperSpectralData():
             )
             self.selected_bands = sel_bands
         if method == "advanced_opts":
-            self.selected_bands = [[55, 41, 12]]
+            self.selected_bands = [55, 41, 12]
 
 
     def create_samples(self):
@@ -171,7 +171,8 @@ class HyperSpectralData():
         self.samples, self.labels = build_dataset(self.data[0],
                                                   self.gt, 
                                                   self.selected_bands,
-                                                  self.target_class)
+                                                  self.target_class,
+                                                  self.labels)
         # print(self.samples[0], labels[0])'
 
     def specify_target_class(self, target: str):

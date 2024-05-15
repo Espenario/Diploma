@@ -13,6 +13,7 @@ from scipy import io, misc
 import imageio
 import torch
 
+
 def get_device(ordinal):
     # Use GPU ?
     if ordinal < 0:
@@ -201,7 +202,11 @@ def select_best_spectrums(img:np.array,
     return best_spectrums
 
 
-def build_dataset(mat, gt, ignored_labels=[]):
+def build_dataset(mat: np.array,
+                  gt,
+                  selected_bands:list,
+                  target_class:str,
+                  labels:list):
     """Create a list of training samples based on an image and a mask.
     Args:
         mat: 3D hyperspectral matrix to extract the spectrums from
@@ -210,16 +215,17 @@ def build_dataset(mat, gt, ignored_labels=[]):
         unlabeled pixels
     """
     samples = []
-    labels = []
+    samples_labels = []
     # Check that image and ground truth have the same 2D dimensions
     assert mat.shape[:2] == gt.shape[:2]
 
-    for label in np.unique(gt):
-        if label in ignored_labels:
-            continue
-        else:
-            indices = np.nonzero(gt == label)
-            samples += list(mat[indices])
-            labels += len(indices[0]) * [label]
+    target_class_id = labels.index(target_class)
+    mask = np.nonzero(gt == target_class_id)
+
+    print(mask)
+    samples = mat[mask].reshape()
+    samples = np.array([samples[:, i] for i in 
+                                      range(samples.shape[1]) if i in selected_bands])
+    samples_labels += len(mask[0]) * [target_class_id]
     
-    return np.asarray(samples), np.asarray(labels)
+    return np.asarray(samples), np.asarray(samples_labels)
