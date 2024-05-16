@@ -1,6 +1,7 @@
 from source.dataset_loader import get_dataset
 from source.datasets import HyperSpectralData
 from source.onn_model import OnnModel
+from source.utils import show_results, evaluate_best_segmentation
 import numpy as np
 
 class HyperPipeline():
@@ -73,4 +74,16 @@ class OnnHyperPipeline(HyperPipeline):
         self.select_chanels(method)
         self.create_samples()
 
-        self.result = self.model.run(self.dataset)
+        self.model.run(self.dataset)
+    
+    def eval(self, metric:str = "iou"):
+        """some txt"""
+        samples_result = evaluate_best_segmentation(self.model.segmented_samples,
+                                                    self.dataset.samples_labels,
+                                                    metric)
+        self.result = samples_result
+        return self.result
+    
+    def show_results(self):
+        """some txt"""
+        show_results(self.result, self.dataset.samples_labels)

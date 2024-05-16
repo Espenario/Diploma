@@ -139,6 +139,7 @@ class HyperSpectralData():
         self.samples_labels: np.array
         self.selected_bands: np.array
         self.target_class: str
+        self.target_class_id: int
     
     def get_data_info(self):
         print(f'Data image dimensions is {self.data.shape} ')
@@ -157,7 +158,7 @@ class HyperSpectralData():
             sel_bands = select_best_spectrums(
                 img = self.data[0],
                 complete_gt = self.gt,
-                target_class = self.target_class,
+                target_class_id = self.target_class_id,
                 labels = self.labels,
                 n = n
             )
@@ -169,10 +170,10 @@ class HyperSpectralData():
     def create_samples(self):
         """some txt"""
         self.samples, self.samples_labels = build_dataset(self.data[0],
-                                                  self.gt, 
-                                                  self.selected_bands,
-                                                  self.target_class,
-                                                  self.labels)
+                                                          self.gt, 
+                                                          self.selected_bands,
+                                                          self.target_class_id,
+                                                          self.labels)
         # print(self.samples[0], labels[0])'
 
     def specify_target_class(self, target: str):
@@ -182,5 +183,6 @@ class HyperSpectralData():
         except Exception as e:
             raise ValueError("Объект для сегментации не представлен в данном датасете") from e
         self.target_class = target
+        self.target_class_id = self.labels.index(self.target_class)
 
         

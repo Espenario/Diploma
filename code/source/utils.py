@@ -184,11 +184,10 @@ def find_n_most_varying(spect_means: dict, n = 4):
 
 def select_best_spectrums(img:np.array,
                           complete_gt, 
-                          target_class: str, 
+                          target_class_id: int, 
                           labels: list,
                           n:int = 4):
     """some txt"""
-    target_class_id = labels.index(target_class)
     mask = complete_gt == target_class_id
     class_spectrums = img[mask].reshape(-1, img.shape[-1])
 
@@ -205,7 +204,7 @@ def select_best_spectrums(img:np.array,
 def build_dataset(mat: np.array,
                   gt,
                   selected_bands:list,
-                  target_class:str,
+                  target_class_id:int,
                   labels:list,
                   num_samples:int = 3,
                   threshold:int = 100):
@@ -224,7 +223,6 @@ def build_dataset(mat: np.array,
     # Check that image and ground truth have the same 2D dimensions
     assert mat.shape[:2] == gt.shape[:2]
 
-    target_class_id = labels.index(target_class)
     height = mat.shape[0]
     width = mat.shape[1]
     mask = np.nonzero(gt == target_class_id)
@@ -246,8 +244,12 @@ def build_dataset(mat: np.array,
            len(list(set(np.arange(start_x,start_x+sample_width)) & set(mask[1]))) > threshold:
             # Sample the part of the image
             samples.append(mat[start_y:start_y+sample_height, start_x:start_x+sample_width, :])
-            samples_labels.append([list(set(np.arange(start_y,start_y+sample_height)) & set(mask[0])),
-                                   list(set(np.arange(start_x,start_x+sample_width)) & set(mask[1]))])
+
+            sample_gt = gt[start_y:start_y+sample_height, start_x:start_x+sample_width]
+            sample_gt[sample_gt == target_class_id] = 1
+            sample_gt[sample_gt != target_class_id] = 0
+            samples_labels.append(sample_gt)
+
             successfuly_generated_samples += 1
     
     samples = np.asarray(samples)
@@ -256,3 +258,73 @@ def build_dataset(mat: np.array,
                                       range(samples.shape[3]) if i in selected_bands])
     
     return np.asarray(samples), np.asarray(samples_labels)
+
+def show_results(segmented: np.array, gt: np.array):
+    """some txt
+    Args:
+        segmented: 3D np.array CxHxW of segmented pixels of target class within C spectral channels
+        gt: 2D ground truth
+    """
+    pass
+
+def evaluate_best_segmentation(segmented: list[dict], samples_labels: np.array, metric:str = "iou"):
+    """some txt
+    Args:
+        segmented: 3D np.array CxHxW of segmented pixels of target class within C spectral channels
+        gt: 2D ground truth
+    Returns:
+        2D array of results by every passed sample. Results are in shape (best_band,
+         segmented_img, best_metric_score)
+    """
+    samples_result = []
+
+    for _ in segmented:
+        band_metrics = dict.fromkeys(segmented.keys())
+        for band_id, band_segment in segmented.items():
+            metric = 0
+            if metric == 'iou':
+                metric = calculate_iou(samples_labels, band_segment)
+            if metric == "pixelwise":
+                metric = calculate_pixelwise_accuracy(samples_labels, band_segment)
+            band_metrics[band_id] = metric
+        
+        samples_result.append(max(band_metrics, key=band_metrics.get), \
+                              segmented[max(band_metrics, key=band_metrics.get)], \
+                              max(band_metrics.values()) )
+
+    return samples_result
+
+def calculate_pixelwise_accuracy(true: np.array, pred: np.array):
+    """calculates pixelwise accuracy metric
+    Args:
+        true: 2D gt of sample (1 if pixel is target class, 0 otherwise)
+        pred: 2D prediction (structure similar to gt)
+    """
+    correct_pixels = (pred == true).count_nonzero()
+    uncorrect_pixels = (pred != true).count_nonzero()
+    result = (correct_pixels / (correct_pixels + uncorrect_pixels)).item()
+
+    return result
+        
+def calculate_iou(true: np.array, pred: np.array):
+    """calculates iou accuracy metric
+    Args:
+        true: 2D gt of sample (1 if pixel is target class, 0 otherwise)
+        pred: 2D prediction (structure similar to gt)
+    """
+    intersection = np.count_nonzero(np.intersect1d(true, pred))
+    union = np.count_nonzero(np.union1d(true, pred))
+    result = intersection / union
+    return result
+
+def extract_stimuls(img: np.ndarray, method = "brightness"):
+    """extract target and other stimuls from img
+    Args:
+        img: 2D np.array representing sample img
+    Returns:
+        list of coordinates of every found stimul
+    """
+    if method == "brightness":
+        brightness_values = np.sort(np.unique(img.flatten()))
+        stimuls_brightnesses = np.split(brightness_values, 5)    # значение рандомно поставил, пока ничего лучше не придумал
+        return stimuls_brightnesses, brightness_values.mean() 

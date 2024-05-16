@@ -10,9 +10,6 @@ def main():
 
     onn_pipe.add_model(OnnModel())
 
-    # onn_pipe.specify_target_class(target_class='Asphalt')
-    # onn_pipe.select_chanels(method = 'simple_opt')
-    # print(onn_pipe.dataset.selected_bands)
     onn_pipe.run(target_class='Asphalt', method = 'simple_opt')
     print(onn_pipe.result)
 
