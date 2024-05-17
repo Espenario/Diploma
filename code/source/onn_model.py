@@ -1,8 +1,9 @@
+from copy import deepcopy
 import numpy as np
 from source.datasets import HyperSpectralData
 from source.utils import extract_stimuls
 from source.oscillators import CentralOscillator, PeripheralOscillator
-from copy import deepcopy
+from source.stimul import Stimul
 
 
 class OnnModule():
@@ -23,33 +24,57 @@ class OnnSelectiveAttentionModule2D(OnnModule):
         self.synchronization_states: list[list] = []
         self.central_oscillator: CentralOscillator
         self.periferal_oscillators: list[list[PeripheralOscillator]] = []
+        self.stimuls: list[Stimul]
 
-    def run(self, img: np.array) -> np.array:
-        """some txt"""
+    def run(self, img: np.ndarray, method = "separate") -> np.ndarray:
+        """some txt
+        Args:
+            img: 3D np.array of shape CxHxW
+        Return:
+            2D np.array of image shape with 1 representiong pixels in attention? 0 without attention
+        """
         selected_area = []
-        for spectral_band_img in img:
-            self.setup_oscillators(spectral_band_img)
-            selected_area.append(self.perform_selection())
-        return selected_area
+        if method == "separete":
+            for spectral_band_img in img:
+                self.setup_oscillators(spectral_band_img)
+                new_selection = self.perform_selection()
+                if new_selection != 0:
+                    selected_area.append(new_selection)
+            
+            return selected_area
+
+        if method == "intersect":
+            for spectral_band_img in img:
+                self.setup_oscillators(spectral_band_img)
+                new_selection = self.perform_selection()
+                if new_selection != 0:
+                    if len(selected_area) == 0:
+                        selected_area = new_selection
+                    else:
+                        selected_area[selected_area == new_selection] = 1
+                        selected_area[selected_area != new_selection] = 0
+            
+            return np.asarray([selected_area for i in range(img.shape[2])])
     
     def setup_oscillators(self, img: np.array):
         """select area of interest (where approximately target is located)"""
-        stimuls, co_freq = extract_stimuls(img)
+        self.stimuls = extract_stimuls(img)
+        co_freq = np.mean(np.asarray(list(map(lambda x: x.stimul_values, self.stimuls))))
         self.central_oscillator = CentralOscillator(freq=co_freq,
                                                     phase=0,
                                                     alpha=np.random.randn(),
                                                     beta=np.random.randn())
-        for i, stimul in enumerate(stimuls):
-            self.generate_periferal_oscillators(i, stimul)
+        for i, stimul in enumerate(self.stimuls):
+            self.generate_periferal_oscillators(stimul, i)
         
-    def generate_periferal_oscillators(self, stimul: np.ndarray, stimul_id:int, n:int = 20):
+    def generate_periferal_oscillators(self, stimul: Stimul, stimul_id:int, n:int = 20):
         """some_txt
         Args:
             n: number of oscillators per stimul
         """
         for _ in range(n):
             self.periferal_oscillators[stimul_id].append(PeripheralOscillator(phase=0,
-                                                                              freq=stimul.mean(),
+                                                                              freq=stimul.stimul_values.mean(),
                                                                               alpha=np.random.randn()
                                                                              ))
         
@@ -86,7 +111,14 @@ class OnnSelectiveAttentionModule2D(OnnModule):
             buf_co = deepcopy(self.central_oscillator)
             self.central_oscillator.step()
             map(lambda x: x.step(buf_co), np.asarray(self.periferal_oscillators).flatten())
-            
+        
+        final_sync_state, id = self.check_synchronization_state()
+
+        if final_sync_state == "ns":
+            return self.stimuls[id].sub_img
+        if final_sync_state == "gs":
+            return np.ones_like(self.stimuls[0].sub_img)
+        return 0
 
 class OnnModel():
 
@@ -109,17 +141,24 @@ class OnnModel2D(OnnModel):
         super().__init__(modules, model_name)
 
     
-    def run(self, dataset: HyperSpectralData):
+    def run(self, dataset: HyperSpectralData, sel_att_method:str = "separate"):
         """some txt"""
         segmented_samples = []
         for sample in dataset.samples:
-            segmented_on_bands = {}
             area_of_interest = self.modules["SelectiveAtt"].run(sample)
-            for spectral_band in area_of_interest:
+
+            if sel_att_method == "separate":
+                segmented_on_bands = {}
+                for spectral_band in area_of_interest:
+                    contours = self.modules["ContourExtr"].run(area_of_interest)
+                    segmented_img = self.modules["Segmentation"].run(contours, area_of_interest)
+                    segmented_on_bands[spectral_band] = segmented_img
+
+                segmented_samples.append(segmented_on_bands)
+            
+            if sel_att_method == "intersect":
                 contours = self.modules["ContourExtr"].run(area_of_interest)
                 segmented_img = self.modules["Segmentation"].run(contours, area_of_interest)
-                segmented_on_bands[spectral_band] = segmented_img
-
-            segmented_samples.append(segmented_on_bands)
+                segmented_samples.append(segmented_img)
 
         self.segmented_samples = segmented_samples

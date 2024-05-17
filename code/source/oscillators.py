@@ -36,6 +36,7 @@ class PeripheralOscillator(Oscillator):
         """some txt"""
         pass
 
-    def get_synchonization_state(self):
+    def get_synchonization_state(self, central_oscillator: CentralOscillator):
         """some txt"""
+        
         pass

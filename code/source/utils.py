@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from scipy import io, misc
 import imageio
 import torch
-
+from source.stimul import Stimul
 
 def get_device(ordinal):
     # Use GPU ?
@@ -185,7 +185,6 @@ def find_n_most_varying(spect_means: dict, n = 4):
 def select_best_spectrums(img:np.array,
                           complete_gt, 
                           target_class_id: int, 
-                          labels: list,
                           n:int = 4):
     """some txt"""
     mask = complete_gt == target_class_id
@@ -205,7 +204,6 @@ def build_dataset(mat: np.array,
                   gt,
                   selected_bands:list,
                   target_class_id:int,
-                  labels:list,
                   num_samples:int = 3,
                   threshold:int = 100):
     """Create a list of training samples based on an image, target class and selected spectral bands.
@@ -317,14 +315,24 @@ def calculate_iou(true: np.array, pred: np.array):
     result = intersection / union
     return result
 
+def calculate_subimage_from_brightness(brightness_values:np.ndarray, img: np.ndarray):
+    """some txt"""
+    img[img in brightness_values] = 1
+    img[img not in brightness_values] = 0
+    return img
+
 def extract_stimuls(img: np.ndarray, method = "brightness"):
-    """extract target and other stimuls from img
+    """extract stimuls from img based on different methods (brightness, etc.)
     Args:
         img: 2D np.array representing sample img
     Returns:
-        list of coordinates of every found stimul
+        list of Stimul object, each of those consists info about position of stimul
+        and about some internal values (brightness)
     """
     if method == "brightness":
         brightness_values = np.sort(np.unique(img.flatten()))
         stimuls_brightnesses = np.split(brightness_values, 5)    # значение рандомно поставил, пока ничего лучше не придумал
-        return stimuls_brightnesses, brightness_values.mean() 
+        
+        stimuls = list(map(lambda x: Stimul(sub_img=calculate_subimage_from_brightness(img=img, brightness_values=x),
+                                       stimul_values=x), stimuls_brightnesses))
+        return stimuls
