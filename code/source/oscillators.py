@@ -1,5 +1,5 @@
 import numpy as np
-
+from source.utils import are_close
 
 class Oscillator():
 
@@ -38,5 +38,8 @@ class PeripheralOscillator(Oscillator):
 
     def get_synchonization_state(self, central_oscillator: CentralOscillator):
         """some txt"""
-        
-        pass
+        tol = 0.1
+        if are_close(self.phase, central_oscillator.phase, rel_tol=tol):
+            return 1
+        else:
+            return 0

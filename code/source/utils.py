@@ -42,6 +42,10 @@ def open_file(dataset):
         return img.load()
     else:
         raise ValueError("Unknown file format: {}".format(ext))
+    
+def are_close(a, b, rel_tol=1e-9, abs_tol=0.0):
+    """Check if two numbers are close within a given tolerance."""
+    return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
 def convert_to_color_(arr_2d, palette=None):
     """Convert an array of labels to RGB color-encoded image.
