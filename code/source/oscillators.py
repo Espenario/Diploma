@@ -15,15 +15,18 @@ class Oscillator():
 
 class CentralOscillator(Oscillator):
 
-    def __init__(self, freq, phase, alpha, beta):
+    def __init__(self, freq, phase, params: list):
         super().__init__(freq, phase)
-        self.alpha = alpha
-        self.beta = beta
+        self.params = params
 
-    def step(self, periferal_osc: list[list[Oscillator]]):
+    def step(self, periferal_osc: list[np.ndarray[Oscillator]]):
         """some txt"""
-        
-        pass
+        delta_phase = self.freq
+        for i, ensemble_po in enumerate(periferal_osc):   
+            partial_sum = np.sum(list(map(lambda x: np.sin(x.phase - self.phase),
+                                           ensemble_po)))
+            delta_phase += self.params[i] * partial_sum / len(periferal_osc)
+        self.phase += delta_phase
 
 
 class PeripheralOscillator(Oscillator):
@@ -34,7 +37,7 @@ class PeripheralOscillator(Oscillator):
 
     def step(self, central_oscillator: CentralOscillator):
         """some txt"""
-        pass
+        self.phase += self.freq + self.alpha * np.sin(central_oscillator.phase - self.phase)
 
     def get_synchonization_state(self, central_oscillator: CentralOscillator):
         """some txt"""

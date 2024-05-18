@@ -159,7 +159,6 @@ class HyperSpectralData():
                 img = self.data[0],
                 complete_gt = self.gt,
                 target_class_id = self.target_class_id,
-                labels = self.labels,
                 n = n
             )
             self.selected_bands = sel_bands
@@ -169,11 +168,12 @@ class HyperSpectralData():
 
     def create_samples(self):
         """some txt"""
-        self.samples, self.samples_labels = build_dataset(self.data[0],
-                                                          self.gt, 
-                                                          self.selected_bands,
-                                                          self.target_class_id,
-                                                          self.labels)
+        self.samples, self.samples_labels = build_dataset(mat=self.data[0],
+                                                          gt=self.gt, 
+                                                          selected_bands=self.selected_bands,
+                                                          target_class_id=self.target_class_id,
+                                                          num_samples=3,
+                                                          threshold=100)
         # print(self.samples[0], labels[0])'
 
     def specify_target_class(self, target: str):

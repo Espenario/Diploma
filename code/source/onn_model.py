@@ -34,14 +34,14 @@ class OnnSelectiveAttentionModule2D(OnnModule):
             2D np.array of image shape with 1 representiong pixels in attention? 0 without attention
         """
         selected_area = []
-        if method == "separete":
+        if method == "separate":
             for spectral_band_img in img:
                 self.setup_oscillators(spectral_band_img)
                 new_selection = self.perform_selection()
                 if new_selection != 0:
                     selected_area.append(new_selection)
             
-            return selected_area
+            return np.asarray(selected_area)
 
         if method == "intersect":
             for spectral_band_img in img:
@@ -54,7 +54,7 @@ class OnnSelectiveAttentionModule2D(OnnModule):
                         selected_area[selected_area == new_selection] = 1
                         selected_area[selected_area != new_selection] = 0
             
-            return np.asarray([selected_area for i in range(img.shape[2])])
+            return selected_area
     
     def setup_oscillators(self, img: np.array):
         """select area of interest (where approximately target is located)"""
@@ -62,8 +62,7 @@ class OnnSelectiveAttentionModule2D(OnnModule):
         co_freq = np.mean(np.asarray(list(map(lambda x: x.stimul_values, self.stimuls))))
         self.central_oscillator = CentralOscillator(freq=co_freq,
                                                     phase=0,
-                                                    alpha=np.random.randn(),
-                                                    beta=np.random.randn())
+                                                    params=np.random.randn(len(self.stimuls)))
         for i, stimul in enumerate(self.stimuls):
             self.generate_periferal_oscillators(stimul, i)
         
@@ -77,6 +76,7 @@ class OnnSelectiveAttentionModule2D(OnnModule):
                                                                               freq=stimul.stimul_values.mean(),
                                                                               alpha=np.random.randn()
                                                                              ))
+        self.periferal_oscillators = np.asarray(self.periferal_oscillators)
         
     def get_synchonization_state(self):
         """some txt"""
@@ -122,7 +122,7 @@ class OnnSelectiveAttentionModule2D(OnnModule):
 
 class OnnModel():
 
-    def __init__(self, modules:dict, model_name = "3_module_Onn") -> None:
+    def __init__(self, modules:dict = {}, model_name = "3_module_Onn") -> None:
         """some txt"""
         self.model_name = model_name
         self.modules = modules
@@ -132,11 +132,14 @@ class OnnModel():
         """some txt"""
         pass
 
+    def add_module(self, module: OnnModule):
+        self.modules[module.module_name] = module
+
 
 class OnnModel2D(OnnModel):
     """some txt"""
 
-    def __init__(self, modules:dict, model_name = "3_module_Onn") -> None:
+    def __init__(self, modules:dict = {}, model_name = "3_module_Onn") -> None:
         """some txt"""
         super().__init__(modules, model_name)
 
@@ -144,21 +147,58 @@ class OnnModel2D(OnnModel):
     def run(self, dataset: HyperSpectralData, sel_att_method:str = "separate"):
         """some txt"""
         segmented_samples = []
+
+        # Переделать нафиг эту функкцию, говно какое-то написано
+
+        if "SelectiveAtt" not in self.modules.keys():
+            raise KeyError("Module SelectiveAtt are not in model modules list, but is necessary")
+              
         for sample in dataset.samples:
-            area_of_interest = self.modules["SelectiveAtt"].run(sample)
+            area_of_interest_mask = self.modules["SelectiveAtt"].run(sample)
 
             if sel_att_method == "separate":
                 segmented_on_bands = {}
-                for spectral_band in area_of_interest:
-                    contours = self.modules["ContourExtr"].run(area_of_interest)
-                    segmented_img = self.modules["Segmentation"].run(contours, area_of_interest)
-                    segmented_on_bands[spectral_band] = segmented_img
+                for i, spectral_band_mask in enumerate(area_of_interest_mask):
+
+                    area_of_interest = sample[i]
+                    area_of_interest[area_of_interest != spectral_band_mask] = -1
+                    try:
+                        contours = self.modules["ContourExtr"].run(area_of_interest)
+                    except:
+                        segmented_on_bands[i] = area_of_interest
+                        continue
+
+                    try:
+                        segmented_img = self.modules["Segmentation"].run(contours, area_of_interest)
+                    except:
+                        segmented_on_bands[i] = area_of_interest
+                        continue
+
+                    segmented_on_bands[i] = segmented_img
 
                 segmented_samples.append(segmented_on_bands)
             
             if sel_att_method == "intersect":
-                contours = self.modules["ContourExtr"].run(area_of_interest)
-                segmented_img = self.modules["Segmentation"].run(contours, area_of_interest)
-                segmented_samples.append(segmented_img)
+                segmented_on_bands = {}
+
+                for i, spectral_band_sample in enumerate(sample):
+
+                    area_of_interest = spectral_band_sample
+                    area_of_interest[area_of_interest != area_of_interest_mask] = -1
+                    try:
+                        contours = self.modules["ContourExtr"].run(area_of_interest)
+                    except:
+                        segmented_on_bands[i] = area_of_interest
+                        continue
+
+                    try:
+                        segmented_img = self.modules["Segmentation"].run(contours, area_of_interest)
+                    except:
+                        segmented_on_bands[i] = area_of_interest
+                        continue
+
+                    segmented_on_bands[i] = segmented_img
+
+                segmented_samples.append(segmented_on_bands)
 
         self.segmented_samples = segmented_samples

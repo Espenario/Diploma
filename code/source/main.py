@@ -11,7 +11,6 @@ def main():
     onn_pipe.add_model(OnnModel())
 
     onn_pipe.run(target_class='Asphalt', method = 'simple_opt')
-    print(onn_pipe.result)
 
 
 if __name__ == "__main__":
