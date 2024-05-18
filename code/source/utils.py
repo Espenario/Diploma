@@ -1,4 +1,5 @@
 """some module docstrings"""
+from copy import deepcopy
 import random
 import os
 import re
@@ -204,11 +205,13 @@ def select_best_spectrums(img:np.array,
     return best_spectrums
 
 
-def build_dataset(mat: np.array,
+def build_dataset(mat: np.ndarray,
                   gt,
                   selected_bands:list,
                   target_class_id:int,
                   num_samples:int = 3,
+                  sample_height:int = 100,
+                  sample_width:int = 100,
                   threshold:int = 100):
     """Create a list of training samples based on an image, target class and selected spectral bands.
     Args:
@@ -229,7 +232,9 @@ def build_dataset(mat: np.array,
     width = mat.shape[1]
     mask = np.nonzero(gt == target_class_id)
 
-    sample_height, sample_width = 100, 100
+    sample_height = max(mat.shape[0], sample_height)
+    sample_width = max(mat.shape[0], sample_width)
+
     successfuly_generated_samples = 0
     while successfuly_generated_samples < num_samples:
         
@@ -256,8 +261,11 @@ def build_dataset(mat: np.array,
     
     samples = np.asarray(samples)
 
-    samples = np.array([samples[:, :, :, i] for i in 
-                                      range(samples.shape[3]) if i in selected_bands])
+    bands_to_exclude = list(set(selected_bands).symmetric_difference(np.arange(0, 103)))
+
+    samples = np.delete(samples, bands_to_exclude, axis = 3)
+
+    samples = samples.reshape((num_samples, len(selected_bands), sample_height, sample_width))
     
     return np.asarray(samples), np.asarray(samples_labels)
 
@@ -272,7 +280,7 @@ def show_results(segmented: np.array, gt: np.array):
 def evaluate_best_segmentation(segmented: list[dict], samples_labels: np.array, metric:str = "iou"):
     """some txt
     Args:
-        segmented: 3D np.array CxHxW of segmented pixels of target class within C spectral channels
+        segmented: 4D np.array SxCxHxW of segmented pixels of target class within C spectral channels and S samples
         gt: 2D ground truth
     Returns:
         2D array of results by every passed sample. Results are in shape (best_band,
@@ -280,19 +288,19 @@ def evaluate_best_segmentation(segmented: list[dict], samples_labels: np.array, 
     """
     samples_result = []
 
-    for _ in segmented:
-        band_metrics = dict.fromkeys(segmented.keys())
-        for band_id, band_segment in segmented.items():
-            metric = 0
-            if metric == 'iou':
-                metric = calculate_iou(samples_labels, band_segment)
+    for sample in segmented:
+        band_metrics = dict.fromkeys(sample.keys())
+        for band_id, band_segment in sample.items():
+            metric_value = 0
+            if metric == "iou":
+                metric_value = calculate_iou(samples_labels, band_segment)
             if metric == "pixelwise":
-                metric = calculate_pixelwise_accuracy(samples_labels, band_segment)
-            band_metrics[band_id] = metric
+                metric_value = calculate_pixelwise_accuracy(samples_labels, band_segment)
+            band_metrics[band_id] = metric_value
         
-        samples_result.append(max(band_metrics, key=band_metrics.get), \
-                              segmented[max(band_metrics, key=band_metrics.get)], \
-                              max(band_metrics.values()) )
+        samples_result.append([max(band_metrics, key=band_metrics.get), \
+                              sample[max(band_metrics, key=band_metrics.get)], \
+                              max(band_metrics.values())])
 
     return samples_result
 
@@ -321,8 +329,7 @@ def calculate_iou(true: np.array, pred: np.array):
 
 def calculate_subimage_from_brightness(brightness_values:np.ndarray, img: np.ndarray):
     """some txt"""
-    img[img in brightness_values] = 1
-    img[img not in brightness_values] = 0
+    img[~np.isin(img, brightness_values)] = 0
     return img
 
 def extract_stimuls(img: np.ndarray, method = "brightness"):
@@ -334,9 +341,14 @@ def extract_stimuls(img: np.ndarray, method = "brightness"):
         and about some internal values (brightness)
     """
     if method == "brightness":
+        num_of_chunks = 5
         brightness_values = np.sort(np.unique(img.flatten()))
-        stimuls_brightnesses = np.split(brightness_values, 5)    # значение рандомно поставил, пока ничего лучше не придумал
+
+        while (len(brightness_values) % num_of_chunks) != 0:
+            brightness_values = brightness_values[:-1]
+
+        stimuls_brightnesses = np.array_split(brightness_values, 5)    # значение рандомно поставил, пока ничего лучше не придумал
         
-        stimuls = list(map(lambda x: Stimul(sub_img=calculate_subimage_from_brightness(img=img, brightness_values=x),
+        stimuls = list(map(lambda x: Stimul(img=img, sub_img=calculate_subimage_from_brightness(img=deepcopy(img), brightness_values=x),
                                        stimul_values=x), stimuls_brightnesses))
         return stimuls

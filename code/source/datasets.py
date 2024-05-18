@@ -129,15 +129,15 @@ class HyperSpectralData():
             data_augmentation: bool, set to True to perform random flips
             supervision: 'full' or 'un' supervised algorithms
         """
-        self.data :np.array = data
-        self.gt :np.array = gt
+        self.data: np.ndarray = data
+        self.gt: np.ndarray = gt
         self.labels_to_ignore = params['ignored_labels']
         self.labels = params['labels']
         self.rgb = params['rbg_bands']
         self.num_bands = params['num_of_bands']
-        self.samples: np.array
-        self.samples_labels: np.array
-        self.selected_bands: np.array
+        self.samples: np.ndarray
+        self.samples_labels: np.ndarray
+        self.selected_bands: np.ndarray
         self.target_class: str
         self.target_class_id: int
     
@@ -166,15 +166,20 @@ class HyperSpectralData():
             self.selected_bands = [55, 41, 12]
 
 
-    def create_samples(self):
+    def create_samples(self,
+                       num_samples:int = 3,
+                       sample_height:int = 100, 
+                       sample_width:int = 100, 
+                       threshold:int = 100):
         """some txt"""
         self.samples, self.samples_labels = build_dataset(mat=self.data[0],
                                                           gt=self.gt, 
                                                           selected_bands=self.selected_bands,
                                                           target_class_id=self.target_class_id,
-                                                          num_samples=3,
-                                                          threshold=100)
-        # print(self.samples[0], labels[0])'
+                                                          num_samples=num_samples,
+                                                          sample_height=sample_height,
+                                                          sample_width=sample_width,
+                                                          threshold=threshold)
 
     def specify_target_class(self, target: str):
         """some txt"""

@@ -56,9 +56,16 @@ class OnnHyperPipeline(HyperPipeline):
         """some txt"""
         self.dataset.specify_target_class(target_class)
 
-    def create_samples(self):
+    def create_samples(self, 
+                       num_samples:int = 3,
+                       sample_height:int = 100,
+                       sample_width:int = 100,
+                       threshold:int = 100):
         """some txt"""
-        self.dataset.create_samples()
+        self.dataset.create_samples(num_samples=num_samples, 
+                                    sample_height=sample_height,
+                                    sample_width=sample_width,
+                                    threshold=threshold)
 
     def select_chanels(self, method = "expert", n = 4):
         """some txt"""
@@ -68,11 +75,24 @@ class OnnHyperPipeline(HyperPipeline):
         """some txt"""
         self.model = model
 
-    def run(self, target_class: str, method: str = "expert"):
-        """some txt"""
+    def run(self, 
+            target_class: str, 
+            band_sel_method: str = "expert", 
+            num_samples:int = 3, 
+            sample_height:int = 100,
+            sample_width:int = 100,
+            threshold:int = 100):
+        """some txt
+        Args:
+            threshold: how much pixels of target class should have been in sample to accept it
+
+        """
         self.specify_target_class(target_class)
-        self.select_chanels(method)
-        self.create_samples()
+        self.select_chanels(band_sel_method)
+        self.create_samples(num_samples=num_samples, 
+                            sample_height=sample_height,
+                            sample_width=sample_width,
+                            threshold=threshold)
 
         self.model.run(self.dataset)
     

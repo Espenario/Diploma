@@ -10,4 +10,4 @@ def test_build_dataset(onn_pipeline: OnnHyperPipeline):
     onn_pipeline.select_chanels(method = 'simple_opt', n = 4)
     onn_pipeline.create_samples()
     print(onn_pipeline.dataset.samples.shape)
-    assert onn_pipeline.dataset.samples.shape[2] == 4
+    assert onn_pipeline.dataset.samples.shape[1] == 4

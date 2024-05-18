@@ -1,5 +1,5 @@
 from source.pipelines import OnnHyperPipeline
-from source.onn_model import OnnModel
+from source.onn_model import OnnModel2D, OnnSelectiveAttentionModule2D
 
 
 def main():
@@ -8,9 +8,15 @@ def main():
 
     onn_pipe.add_dataset(dataset_name='PaviaU')
 
-    onn_pipe.add_model(OnnModel())
+    model = OnnModel2D(model_name="attention_only")
+    model.add_module(OnnSelectiveAttentionModule2D("SelectiveAtt"))
 
-    onn_pipe.run(target_class='Asphalt', method = 'simple_opt')
+    onn_pipe.add_model(model)
+
+    onn_pipe.run(target_class='Asphalt', band_sel_method='simple_opt')
+    res = onn_pipe.eval(metric = "iou")
+
+    print(res[0])
 
 
 if __name__ == "__main__":

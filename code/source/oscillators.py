@@ -41,7 +41,7 @@ class PeripheralOscillator(Oscillator):
 
     def get_synchonization_state(self, central_oscillator: CentralOscillator):
         """some txt"""
-        tol = 0.1
+        tol = 0.01
         if are_close(self.phase, central_oscillator.phase, rel_tol=tol):
             return 1
         else:
