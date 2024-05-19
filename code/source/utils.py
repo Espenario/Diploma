@@ -3,9 +3,11 @@ from copy import deepcopy
 import random
 import os
 import re
+import cv2
 import itertools
 import numpy as np
 from sklearn.metrics import confusion_matrix
+from typing import Dict
 import sklearn.model_selection
 import seaborn as sns
 import spectral
@@ -13,7 +15,16 @@ import matplotlib.pyplot as plt
 from scipy import io, misc
 import imageio
 import torch
-from source.stimul import Stimul
+from source.stimul import Stimul, Sample
+
+
+class Result():
+
+    def __init__(self, best_band_id, sample, best_score):
+        self.best_band_id = best_band_id
+        self.sample = sample
+        self.best_score = best_score
+
 
 def get_device(ordinal):
     # Use GPU ?
@@ -103,7 +114,7 @@ def display_predictions(pred, vis, gt=None, caption=""):
                     nrow=2,
                     opts={'caption': caption})
 
-def display_image(img, rgb_bands, other_bands):
+def display_image(img, rgb_bands, other_bands = []):
     """Display the specified dataset.
     Args:
         img: 3D hyperspectral image
@@ -206,13 +217,14 @@ def select_best_spectrums(img:np.array,
 
 
 def build_dataset(mat: np.ndarray,
-                  gt,
+                  gt: np.ndarray,
                   selected_bands:list,
                   target_class_id:int,
                   num_samples:int = 3,
                   sample_height:int = 100,
                   sample_width:int = 100,
-                  threshold:int = 100):
+                  threshold:int = 100,
+                  rgb_bands: list = []):
     """Create a list of training samples based on an image, target class and selected spectral bands.
     Args:
         mat: 3D hyperspectral matrix to extract the spectrums from
@@ -224,16 +236,13 @@ def build_dataset(mat: np.ndarray,
         threshold: minimum number of pixels of target class
     """
     samples = []
-    samples_labels = []
     # Check that image and ground truth have the same 2D dimensions
     assert mat.shape[:2] == gt.shape[:2]
 
     height = mat.shape[0]
     width = mat.shape[1]
-    mask = np.nonzero(gt == target_class_id)
 
-    sample_height = max(mat.shape[0], sample_height)
-    sample_width = max(mat.shape[0], sample_width)
+    bands_to_exclude = list(set(selected_bands).symmetric_difference(np.arange(0, 103)))
 
     successfuly_generated_samples = 0
     while successfuly_generated_samples < num_samples:
@@ -247,37 +256,81 @@ def build_dataset(mat: np.ndarray,
         start_y = random.randint(0, height - sample_height)
 
         # Verify that target class is represented at random sample
-        if len(list(set(np.arange(start_y,start_y+sample_height)) & set(mask[0]))) + \
-           len(list(set(np.arange(start_x,start_x+sample_width)) & set(mask[1]))) > threshold:
+        cand_gt = deepcopy(gt[start_y:start_y+sample_height, start_x:start_x+sample_width])
+        unique, counts = np.unique(cand_gt, return_counts=True)
+        class_tags_count = dict(zip(unique, counts))
+        if target_class_id in class_tags_count.keys() and class_tags_count[target_class_id] > threshold:
             # Sample the part of the image
-            samples.append(mat[start_y:start_y+sample_height, start_x:start_x+sample_width, :])
+            samples_bands = mat[start_y:start_y+sample_height, start_x:start_x+sample_width, :]
+            samples_bands = np.asarray(samples_bands)
 
-            sample_gt = gt[start_y:start_y+sample_height, start_x:start_x+sample_width]
-            sample_gt[sample_gt == target_class_id] = 1
+            samples_bands = np.delete(samples_bands, bands_to_exclude, axis = 2)
+            samples_bands = samples_bands.reshape(len(selected_bands), sample_height, sample_width)
+
+            sample_gt = deepcopy(gt[start_y:start_y+sample_height, start_x:start_x+sample_width])
             sample_gt[sample_gt != target_class_id] = 0
-            samples_labels.append(sample_gt)
+            
+            samples.append(Sample(original_img=mat[start_y:start_y+sample_height, 
+                                                       start_x:start_x+sample_width, 
+                                                       :],
+                                  band_img=samples_bands,
+                                  labels=sample_gt))
 
             successfuly_generated_samples += 1
     
-    samples = np.asarray(samples)
+    return samples
 
-    bands_to_exclude = list(set(selected_bands).symmetric_difference(np.arange(0, 103)))
-
-    samples = np.delete(samples, bands_to_exclude, axis = 3)
-
-    samples = samples.reshape((num_samples, len(selected_bands), sample_height, sample_width))
-    
-    return np.asarray(samples), np.asarray(samples_labels)
-
-def show_results(segmented: np.array, gt: np.array):
+def show_results(img:np.ndarray, segmented: Result, gt: np.ndarray, rgb_bands:list, target_class:str):
     """some txt
     Args:
-        segmented: 3D np.array CxHxW of segmented pixels of target class within C spectral channels
+        img: 3D np.array HxWxC representing begin image 
+        segmented: Result object
         gt: 2D ground truth
     """
-    pass
+    # Ensure the input arrays have compatible shapes
+    # if segmented.shape != img.shape[:2]:
+    #     raise ValueError("Segmentation result and image must have compatible shapes")
 
-def evaluate_best_segmentation(segmented: list[dict], samples_labels: np.array, metric:str = "iou"):
+    # Create a color map for the ground truth mask
+    color_map = plt.get_cmap('jet')
+    
+    # Normalize the ground truth mask for coloring
+    gt_mask_normalized = gt.astype(float) / gt.max()
+    
+    # Apply the color map to the ground truth mask
+    gt_colored = color_map(gt_mask_normalized)
+
+    rgb = spectral.get_rgb(img, rgb_bands)
+    rgb /= np.max(rgb)
+    rgb = np.asarray(255 * rgb, dtype='uint8')
+
+    # Display the original image, segmentation result, and overlay
+    plt.figure(figsize=(15, 5))
+    
+    plt.subplot(1, 3, 1)
+    plt.title(f"Original Image, Shape{img.shape[:3]}")
+    plt.imshow(rgb)
+    plt.axis('off')
+    
+    segmented_band = spectral.get_rgb(segmented.sample[segmented.best_band_id])    # segmented.sample[segmented.best_band_id]
+    segmented_band /= np.max(segmented_band)
+    segmented_band = np.asarray(255 * segmented_band, dtype='uint8')
+    plt.subplot(1, 3, 2)
+    plt.title(f"Segmentation Result, Shape{segmented_band.shape}, Metric {segmented.best_score}")
+    plt.imshow(segmented_band)
+    plt.axis('off')
+    
+    plt.subplot(1, 3, 3)
+    plt.title(f"Segmentation with GT Overlay, Target class {target_class}")
+    plt.imshow(gt_colored[..., :4])
+    plt.axis('off')
+
+    plt.show()
+
+def evaluate_best_segmentation(segmented: list[dict], 
+                               samples: list[Sample], 
+                               target_class_id: int,
+                               metric:str = "iou"):
     """some txt
     Args:
         segmented: 4D np.array SxCxHxW of segmented pixels of target class within C spectral channels and S samples
@@ -288,19 +341,23 @@ def evaluate_best_segmentation(segmented: list[dict], samples_labels: np.array, 
     """
     samples_result = []
 
-    for sample in segmented:
+    for i, sample in enumerate(segmented):
         band_metrics = dict.fromkeys(sample.keys())
         for band_id, band_segment in sample.items():
+            # band_segment have brightness values instead of class label, 
+            # so we need to convert them into the mask with class labels
+            band_segment_with_labels = deepcopy(band_segment)
+            band_segment_with_labels[band_segment_with_labels != -1] = target_class_id
             metric_value = 0
             if metric == "iou":
-                metric_value = calculate_iou(samples_labels, band_segment)
+                metric_value = calculate_iou(samples[i].labels, band_segment_with_labels, target_class_id)
             if metric == "pixelwise":
-                metric_value = calculate_pixelwise_accuracy(samples_labels, band_segment)
+                metric_value = calculate_pixelwise_accuracy(samples[i].labels, band_segment_with_labels)
             band_metrics[band_id] = metric_value
         
-        samples_result.append([max(band_metrics, key=band_metrics.get), \
-                              sample[max(band_metrics, key=band_metrics.get)], \
-                              max(band_metrics.values())])
+        samples_result.append(Result(best_band_id=max(band_metrics, key=band_metrics.get),
+                                     sample=sample,
+                                     best_score=max(band_metrics.values())))
 
     return samples_result
 
@@ -316,20 +373,30 @@ def calculate_pixelwise_accuracy(true: np.array, pred: np.array):
 
     return result
         
-def calculate_iou(true: np.array, pred: np.array):
+def calculate_iou(true: np.ndarray, pred: np.ndarray, target_class_id: int):
     """calculates iou accuracy metric
     Args:
         true: 2D gt of sample (1 if pixel is target class, 0 otherwise)
         pred: 2D prediction (structure similar to gt)
     """
-    intersection = np.count_nonzero(np.intersect1d(true, pred))
-    union = np.count_nonzero(np.union1d(true, pred))
-    result = intersection / union
-    return result
+    if true.shape != pred.shape:
+        return 0    # temporary solution? or no...
+        raise ValueError("Input arrays must have the same shape")
+    
+    # Calculate the intersection and union
+    intersection = np.logical_and(true==target_class_id, pred==target_class_id)
+    union = np.logical_or(true==target_class_id, pred==target_class_id)
+    
+    if np.sum(union) == 0:
+        iou = 0.0  # Avoid division by zero
+    else:
+        iou = np.sum(intersection) / np.sum(union)
+    
+    return iou
 
 def calculate_subimage_from_brightness(brightness_values:np.ndarray, img: np.ndarray):
     """some txt"""
-    img[~np.isin(img, brightness_values)] = 0
+    img[~np.isin(img, brightness_values)] = -1
     return img
 
 def extract_stimuls(img: np.ndarray, method = "brightness"):
@@ -341,14 +408,16 @@ def extract_stimuls(img: np.ndarray, method = "brightness"):
         and about some internal values (brightness)
     """
     if method == "brightness":
-        num_of_chunks = 5
+        num_of_chunks = 2
         brightness_values = np.sort(np.unique(img.flatten()))
 
         while (len(brightness_values) % num_of_chunks) != 0:
             brightness_values = brightness_values[:-1]
 
-        stimuls_brightnesses = np.array_split(brightness_values, 5)    # значение рандомно поставил, пока ничего лучше не придумал
+        stimuls_brightnesses = np.array_split(brightness_values, num_of_chunks)    # значение рандомно поставил, пока ничего лучше не придумал
         
-        stimuls = list(map(lambda x: Stimul(img=img, sub_img=calculate_subimage_from_brightness(img=deepcopy(img), brightness_values=x),
-                                       stimul_values=x), stimuls_brightnesses))
+        stimuls = list(map(lambda x: Stimul(img=img, 
+                                            sub_img=calculate_subimage_from_brightness(img=deepcopy(img),
+                                                                                       brightness_values=x),
+                                            stimul_values=x), stimuls_brightnesses))
         return stimuls

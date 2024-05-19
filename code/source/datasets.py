@@ -3,7 +3,7 @@ import torch.utils
 import torch.utils.data
 import numpy as np
 from source.utils import display_image, explore_spectrums, build_dataset, select_best_spectrums
-
+from source.stimul import Sample
 
 class HyperSpectralTorchData(torch.utils.data.Dataset):
     """ Generic class for a hyperspectral scene """
@@ -135,7 +135,7 @@ class HyperSpectralData():
         self.labels = params['labels']
         self.rgb = params['rbg_bands']
         self.num_bands = params['num_of_bands']
-        self.samples: np.ndarray
+        self.samples: list[Sample]
         self.samples_labels: np.ndarray
         self.selected_bands: np.ndarray
         self.target_class: str
@@ -172,14 +172,15 @@ class HyperSpectralData():
                        sample_width:int = 100, 
                        threshold:int = 100):
         """some txt"""
-        self.samples, self.samples_labels = build_dataset(mat=self.data[0],
-                                                          gt=self.gt, 
-                                                          selected_bands=self.selected_bands,
-                                                          target_class_id=self.target_class_id,
-                                                          num_samples=num_samples,
-                                                          sample_height=sample_height,
-                                                          sample_width=sample_width,
-                                                          threshold=threshold)
+        self.samples = build_dataset(mat=self.data[0],
+                                     gt=self.gt, 
+                                     selected_bands=self.selected_bands,
+                                     target_class_id=self.target_class_id,
+                                     num_samples=num_samples,
+                                     sample_height=sample_height,
+                                     sample_width=sample_width,
+                                     threshold=threshold,
+                                     rgb_bands=self.rgb)
 
     def specify_target_class(self, target: str):
         """some txt"""
@@ -190,4 +191,3 @@ class HyperSpectralData():
         self.target_class = target
         self.target_class_id = self.labels.index(self.target_class)
 
-        

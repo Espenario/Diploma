@@ -16,7 +16,7 @@ def main():
     onn_pipe.run(target_class='Asphalt', band_sel_method='simple_opt')
     res = onn_pipe.eval(metric = "iou")
 
-    print(res[0])
+    onn_pipe.show_results()
 
 
 if __name__ == "__main__":

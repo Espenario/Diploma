@@ -24,7 +24,7 @@ def onn_model_attention_only():
 @pytest.fixture(scope="session")
 def onn_sel_att_module(onn_pipeline_fully_set: OnnHyperPipeline):
     sample_img = onn_pipeline_fully_set.dataset.samples[0]
-    sample_band = sample_img[0]
+    sample_band = sample_img.band_img[0]
     module = OnnSelectiveAttentionModule2D("SelectiveAtt")
     module.setup_oscillators(sample_band)
     return module

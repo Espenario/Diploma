@@ -1,7 +1,7 @@
 from source.dataset_loader import get_dataset
 from source.datasets import HyperSpectralData
 from source.onn_model import OnnModel
-from source.utils import show_results, evaluate_best_segmentation
+from source.utils import show_results, evaluate_best_segmentation, Result
 import numpy as np
 
 class HyperPipeline():
@@ -34,7 +34,7 @@ class OnnHyperPipeline(HyperPipeline):
         super().__init__()
         self.dataset: HyperSpectralData
         self.model: OnnModel
-        self.result: np.array
+        self.result: list[Result]
 
     def add_dataset(self, dataset_name='PaviaU', load_folder="./datasets"):
         """some txt"""
@@ -99,11 +99,16 @@ class OnnHyperPipeline(HyperPipeline):
     def eval(self, metric:str = "iou"):
         """some txt"""
         samples_result = evaluate_best_segmentation(self.model.segmented_samples,
-                                                    self.dataset.samples_labels,
+                                                    self.dataset.samples,
+                                                    self.dataset.target_class_id,
                                                     metric)
         self.result = samples_result
         return self.result
     
     def show_results(self):
         """some txt"""
-        show_results(self.result, self.dataset.samples_labels)
+        show_results(img=self.dataset.samples[0].original_img, 
+                     segmented=self.result[0], 
+                     gt=self.dataset.samples[0].labels,
+                     rgb_bands = self.dataset.rgb,
+                     target_class = self.dataset.target_class)

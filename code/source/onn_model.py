@@ -39,7 +39,7 @@ class OnnSelectiveAttentionModule2D(OnnModule):
         for spectral_band_img in img:
             self.setup_oscillators(spectral_band_img)
             new_selection = self.perform_selection()
-            if ~isinstance(new_selection, int):
+            if not(isinstance(new_selection, int)):
                 if self.att_method == "separate":
                     selected_area.append(new_selection)
                 if self.att_method == "intersect":
@@ -52,32 +52,41 @@ class OnnSelectiveAttentionModule2D(OnnModule):
         # if self.att_method == "separate":
         #     return np.asarray(selected_area)
         # if self.att_method == "intersect":
-        return selected_area
+        if len(selected_area) == 0:
+            return img
+        return np.asarray(selected_area)
+    
+    def generate_oscillators_params(self, method:str = "expert"):
+        params = np.ones(len(self.stimuls)) * 10
+        params[0] = 123
+        return params
     
     def setup_oscillators(self, img: np.array):
         """select area of interest (where approximately target is located)"""
         self.periferal_oscillators = []
         self.stimuls = extract_stimuls(img)
         co_freq = np.mean(np.asarray(list(map(lambda x: x.stimul_values, self.stimuls)), dtype="object"))
+        params = self.generate_oscillators_params()
         self.central_oscillator = CentralOscillator(freq=co_freq,
-                                                    phase=0,
-                                                    params=np.random.randn(len(self.stimuls)))
+                                                    phase=1,
+                                                    params=params)
         
         for i, stimul in enumerate(self.stimuls):
             self.periferal_oscillators.append([])
-            self.generate_periferal_oscillators(stimul, i)
+            self.generate_periferal_oscillators(stimul=stimul, stimul_id=i, alpha=params[i])
 
         self.periferal_oscillators = np.asarray(self.periferal_oscillators)
         
-    def generate_periferal_oscillators(self, stimul: Stimul, stimul_id:int, n:int = 20):
+    def generate_periferal_oscillators(self, stimul: Stimul, alpha:int, stimul_id:int, n:int = 2):
         """some_txt
         Args:
             n: number of oscillators per stimul
         """
-        for _ in range(n):
+        coef = 1e-4
+        for i in range(min(n, len(stimul.stimul_values))):
             self.periferal_oscillators[stimul_id].append(PeripheralOscillator(phase=0,
-                                                                              freq=stimul.stimul_values.mean(),
-                                                                              alpha=np.random.randn()
+                                                                              freq=stimul.stimul_values.mean() + coef * stimul.stimul_values[i],
+                                                                              alpha=alpha
                                                                              ))
         
     def get_synchonization_state(self):
@@ -110,12 +119,23 @@ class OnnSelectiveAttentionModule2D(OnnModule):
     def perform_selection(self):
         """some txt"""    
         iter_num = 0
-        while self.check_synchronization_state()[0] == "ns" and iter_num < 10000:
+        while ((self.check_synchronization_state()[0] != "ps" and \
+               self.check_synchronization_state()[0] != "gs") or iter_num < 1) and iter_num < 100:
             buf_co = deepcopy(self.central_oscillator)
-            self.central_oscillator.step()
-            map(lambda x: x.step(buf_co), np.asarray(self.periferal_oscillators).flatten())
+            self.central_oscillator.step(self.periferal_oscillators)
+            # print(iter_num)
+            for ensemble in self.periferal_oscillators:
+                for po in ensemble:
+                    po.step(buf_co)
+            # map(lambda x: x.step(buf_co), np.asarray(self.periferal_oscillators).flatten())
+            # print(self.check_synchronization_state()[0], self.central_oscillator.phase, self.periferal_oscillators[0][0].phase, 
+            #                                      self.periferal_oscillators[0][1].phase,
+            #                                      self.periferal_oscillators[1][0].phase)
+            iter_num += 1
         
         final_sync_state, id = self.check_synchronization_state()
+
+        # print(final_sync_state)
 
         if final_sync_state == "ps":
             return self.stimuls[id].sub_img
@@ -155,23 +175,29 @@ class OnnModel2D(OnnModel):
             raise KeyError("Module SelectiveAtt are not in model modules list, but is necessary")
               
         for sample in dataset.samples:
-            area_of_interest_mask = self.modules["SelectiveAtt"].run(sample)
+            area_of_interest_mask = self.modules["SelectiveAtt"].run(sample.band_img)
 
             if self.modules["SelectiveAtt"].att_method == "separate":
                 iterate_bands_over = area_of_interest_mask
 
             if self.modules["SelectiveAtt"].att_method == "intersect":
-                iterate_bands_over = sample
+                iterate_bands_over = sample.band_img
 
             segmented_on_bands = {}
             for i, spectral_band_mask in enumerate(iterate_bands_over):
                 
-                area_of_interest = sample[i]
+                area_of_interest = deepcopy(sample.band_img[i])
                 if self.modules["SelectiveAtt"].att_method == "separate":
+                    # verify that only current stimul represented in area_of_interest brightness values
                     area_of_interest[area_of_interest != spectral_band_mask] = -1
 
                 if self.modules["SelectiveAtt"].att_method == "intersect":
+                    # verify that only current stimul represented in area_of_interest brightness values
                     area_of_interest[area_of_interest != area_of_interest_mask] = -1
+
+                # crop the area to minimuze furthewr calculations
+                area_of_interest = area_of_interest[~np.all(area_of_interest == -1, axis=1)]
+                area_of_interest = area_of_interest[:,~(area_of_interest==-1).all(0)]
 
                 try:
                     contours = self.modules["ContourExtr"].run(area_of_interest)

@@ -25,7 +25,7 @@ class CentralOscillator(Oscillator):
         for i, ensemble_po in enumerate(periferal_osc):   
             partial_sum = np.sum(list(map(lambda x: np.sin(x.phase - self.phase),
                                            ensemble_po)))
-            delta_phase += self.params[i] * partial_sum / len(periferal_osc)
+            delta_phase += self.params[i] * partial_sum / len(ensemble_po)
         self.phase += delta_phase
 
 
@@ -41,8 +41,8 @@ class PeripheralOscillator(Oscillator):
 
     def get_synchonization_state(self, central_oscillator: CentralOscillator):
         """some txt"""
-        tol = 0.01
-        if are_close(self.phase, central_oscillator.phase, rel_tol=tol):
+        tol = 100
+        if are_close(self.phase, central_oscillator.phase, abs_tol=tol):
             return 1
         else:
             return 0
