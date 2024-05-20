@@ -221,8 +221,8 @@ def build_dataset(mat: np.ndarray,
                   selected_bands:list,
                   target_class_id:int,
                   num_samples:int = 3,
-                  sample_height:int = 100,
-                  sample_width:int = 100,
+                  sample_height:int = 200,
+                  sample_width:int = 200,
                   threshold:int = 100,
                   rgb_bands: list = []):
     """Create a list of training samples based on an image, target class and selected spectral bands.
@@ -242,7 +242,7 @@ def build_dataset(mat: np.ndarray,
     height = mat.shape[0]
     width = mat.shape[1]
 
-    bands_to_exclude = list(set(selected_bands).symmetric_difference(np.arange(0, 103)))
+    bands_to_exclude = list(set(selected_bands).symmetric_difference(np.arange(0, mat.shape[2])))
 
     successfuly_generated_samples = 0
     while successfuly_generated_samples < num_samples:
@@ -261,20 +261,20 @@ def build_dataset(mat: np.ndarray,
         class_tags_count = dict(zip(unique, counts))
         if target_class_id in class_tags_count.keys() and class_tags_count[target_class_id] > threshold:
             # Sample the part of the image
-            samples_bands = mat[start_y:start_y+sample_height, start_x:start_x+sample_width, :]
+            samples_bands = deepcopy(mat[start_y:start_y+sample_height, start_x:start_x+sample_width, :])
             samples_bands = np.asarray(samples_bands)
 
             samples_bands = np.delete(samples_bands, bands_to_exclude, axis = 2)
-            samples_bands = samples_bands.reshape(len(selected_bands), sample_height, sample_width)
+            samples_bands = samples_bands.transpose((2, 0, 1))
 
             sample_gt = deepcopy(gt[start_y:start_y+sample_height, start_x:start_x+sample_width])
             sample_gt[sample_gt != target_class_id] = 0
             
             samples.append(Sample(original_img=mat[start_y:start_y+sample_height, 
-                                                       start_x:start_x+sample_width, 
-                                                       :],
+                                                   start_x:start_x+sample_width, 
+                                                   :],
                                   band_img=samples_bands,
-                                  labels=sample_gt))
+                                  labels=sample_gt)) 
 
             successfuly_generated_samples += 1
     
@@ -312,12 +312,9 @@ def show_results(img:np.ndarray, segmented: Result, gt: np.ndarray, rgb_bands:li
     plt.imshow(rgb)
     plt.axis('off')
     
-    segmented_band = spectral.get_rgb(segmented.sample[segmented.best_band_id])    # segmented.sample[segmented.best_band_id]
-    segmented_band /= np.max(segmented_band)
-    segmented_band = np.asarray(255 * segmented_band, dtype='uint8')
     plt.subplot(1, 3, 2)
-    plt.title(f"Segmentation Result, Shape{segmented_band.shape}, Metric {segmented.best_score}")
-    plt.imshow(segmented_band)
+    plt.title(f"Segmentation Result, Shape{segmented.sample[segmented.best_band_id].shape}, Metric {segmented.best_score}")
+    plt.imshow(segmented.sample[segmented.best_band_id])
     plt.axis('off')
     
     plt.subplot(1, 3, 3)
@@ -421,3 +418,27 @@ def extract_stimuls(img: np.ndarray, method = "brightness"):
                                                                                        brightness_values=x),
                                             stimul_values=x), stimuls_brightnesses))
         return stimuls
+
+def show_contours(img:np.ndarray, contours: list[np.ndarray]):
+    """some txt
+    Args:
+        img: 2D np.array respresenting 1 band of input image
+        contours: list of selected contours for this img
+    """
+    fig, ax = plt.subplots()
+
+    img = np.asarray([img])
+
+    img = img.reshape((img.shape[1], img.shape[2], img.shape[0]))
+
+    img = spectral.get_rgb(img, [0])
+
+    ax.imshow(img)
+
+    for contour in contours:
+        ax.plot(contour[:, 1], contour[:, 0], linewidth=2)
+
+    ax.axis('image')
+    ax.set_xticks([])
+    ax.set_yticks([])
+    plt.show()

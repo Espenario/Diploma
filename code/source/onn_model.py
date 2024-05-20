@@ -1,8 +1,9 @@
 from copy import deepcopy
 from typing import Dict
+from skimage import measure
 import numpy as np
 from source.datasets import HyperSpectralData
-from source.utils import extract_stimuls
+from source.utils import extract_stimuls, show_contours
 from source.oscillators import CentralOscillator, PeripheralOscillator
 from source.stimul import Stimul
 
@@ -16,6 +17,35 @@ class OnnModule():
     def run(self, img):
         """somt txt"""
         pass
+
+class OnnContourExtractionModule(OnnModule):
+
+    def __init__(self, module_name):
+        super().__init__(module_name)
+        self.contours: np.ndarray
+    
+    def run(self, img: np.ndarray, find_cont_method:str = "library", draw_contours:bool = True):
+        """some txt
+        Args:
+            img: 2D np.array of shape HxW
+        Return:
+            3D np.array of representing contour lines for each spectral band
+        """
+        if find_cont_method == "library":
+            self.extract_cont_library(img)
+
+        if draw_contours:
+            try:
+                show_contours(img, self.contours)
+            except KeyError:
+                print("Extract contours module doesnt detect any contours( Try to change params")  # сделать такие сообщения как логи
+
+        return self.contours
+    
+    def extract_cont_library(self, img: np.ndarray):
+        """some txt"""
+        contours = measure.find_contours(img)
+        self.contours = contours
 
 
 class OnnSelectiveAttentionModule2D(OnnModule):
@@ -33,7 +63,7 @@ class OnnSelectiveAttentionModule2D(OnnModule):
         Args:
             img: 3D np.array of shape CxHxW
         Return:
-            2D np.array of image shape with 1 representiong pixels in attention? 0 without attention
+            3D np.array of image shape with 0 representiong pixels without attention
         """
         selected_area = []
         for spectral_band_img in img:
@@ -46,7 +76,6 @@ class OnnSelectiveAttentionModule2D(OnnModule):
                     if len(selected_area) == 0:
                         selected_area = new_selection
                     else:
-                        selected_area[selected_area == new_selection] = 1
                         selected_area[selected_area != new_selection] = 0
                 
         # if self.att_method == "separate":

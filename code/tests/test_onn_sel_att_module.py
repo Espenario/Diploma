@@ -1,5 +1,4 @@
 import numpy as np
-import requests
 from PIL import Image
 from source.oscillators import PeripheralOscillator
 from source.onn_model import OnnModel2D, OnnSelectiveAttentionModule2D

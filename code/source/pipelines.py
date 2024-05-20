@@ -103,7 +103,6 @@ class OnnHyperPipeline(HyperPipeline):
                                                     self.dataset.target_class_id,
                                                     metric)
         self.result = samples_result
-        return self.result
     
     def show_results(self):
         """some txt"""

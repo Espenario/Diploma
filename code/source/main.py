@@ -1,5 +1,5 @@
 from source.pipelines import OnnHyperPipeline
-from source.onn_model import OnnModel2D, OnnSelectiveAttentionModule2D
+from source.onn_model import OnnModel2D, OnnSelectiveAttentionModule2D, OnnContourExtractionModule
 
 
 def main():
@@ -10,11 +10,12 @@ def main():
 
     model = OnnModel2D(model_name="attention_only")
     model.add_module(OnnSelectiveAttentionModule2D("SelectiveAtt"))
+    model.add_module(OnnContourExtractionModule("ContourExtr"))
 
     onn_pipe.add_model(model)
 
     onn_pipe.run(target_class='Asphalt', band_sel_method='simple_opt')
-    res = onn_pipe.eval(metric = "iou")
+    onn_pipe.eval(metric = "iou")
 
     onn_pipe.show_results()
 
