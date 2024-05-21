@@ -3,8 +3,7 @@ from copy import deepcopy
 import random
 import os
 import re
-import cv2
-import itertools
+import json
 import numpy as np
 from sklearn.metrics import confusion_matrix
 from typing import Dict
@@ -18,6 +17,46 @@ import torch
 from source.stimul import Stimul, Sample
 
 
+HYPERPARAMS = {
+    "Dataset": ["num_samples", "sample_height", "sample_width", "threshold", 
+                "band_sel_method", "num_of_bands"],
+    "OnnSelAtModule": ["params_sel_method", "stimuls_num", "stimuls_sel_method",
+                       "po_num"],
+    "OnnContExtrModule": ["find_cont_method", "draw_contours", "cont_area_threshold_percent",
+                          "level_value"]
+}
+
+class Params():
+    """Class that loads hyperparameters from a json file.
+
+    Example:
+    ```
+    params = Params(json_path)
+    print(params.learning_rate)
+    params.learning_rate = 0.5  # change the value of learning_rate in params
+    ```
+    """
+
+    def __init__(self, json_path):
+        with open(json_path) as f:
+            params = json.load(f)
+            self.__dict__.update(params)
+
+    def save(self, json_path):
+        with open(json_path, 'w') as f:
+            json.dump(self.__dict__, f, indent=4)
+
+    def update(self, json_path):
+        """Loads parameters from json file"""
+        with open(json_path) as f:
+            params = json.load(f)
+            self.__dict__.update(params)
+
+    @property
+    def dict(self):
+        """Gives dict-like access to Params instance by `params.dict['learning_rate']"""
+        return self.__dict__
+
 class Result():
 
     def __init__(self, best_band_id, sample, best_score):
@@ -25,6 +64,17 @@ class Result():
         self.sample = sample
         self.best_score = best_score
 
+def save_dict_to_json(d, json_path):
+    """Saves dict of floats in json file
+
+    Args:
+        d: (dict) of float-castable values (np.float, int, float, etc.)
+        json_path: (string) path to json file
+    """
+    with open(json_path, 'w') as f:
+        # We need to convert the values to float for json (it doesn't accept np.array, np.float, )
+        d = {k: float(v) for k, v in d.items()}
+        json.dump(d, f, indent=4)
 
 def get_device(ordinal):
     # Use GPU ?
@@ -269,12 +319,17 @@ def build_dataset(mat: np.ndarray,
 
             sample_gt = deepcopy(gt[start_y:start_y+sample_height, start_x:start_x+sample_width])
             sample_gt[sample_gt != target_class_id] = 0
+
+            mask = sample_gt == target_class_id
+            class_spectrums = samples_bands.transpose((1, 2, 0))[mask].reshape(-1, samples_bands.transpose((1, 2, 0)).shape[-1])
+            target_brightness = np.mean(class_spectrums, axis=0)
             
             samples.append(Sample(original_img=mat[start_y:start_y+sample_height, 
                                                    start_x:start_x+sample_width, 
                                                    :],
                                   band_img=samples_bands,
-                                  labels=sample_gt)) 
+                                  labels=sample_gt,
+                                  target_brightness=target_brightness))
 
             successfuly_generated_samples += 1
     
@@ -396,7 +451,7 @@ def calculate_subimage_from_brightness(brightness_values:np.ndarray, img: np.nda
     img[~np.isin(img, brightness_values)] = -1
     return img
 
-def extract_stimuls(img: np.ndarray, method = "brightness"):
+def extract_stimuls(img: np.ndarray, stimuls_num:int = 2, method:str = "brightness"):
     """extract stimuls from img based on different methods (brightness, etc.)
     Args:
         img: 2D np.array representing sample img
@@ -404,8 +459,8 @@ def extract_stimuls(img: np.ndarray, method = "brightness"):
         list of Stimul object, each of those consists info about position of stimul
         and about some internal values (brightness)
     """
+    num_of_chunks = stimuls_num
     if method == "brightness":
-        num_of_chunks = 2
         brightness_values = np.sort(np.unique(img.flatten()))
 
         while (len(brightness_values) % num_of_chunks) != 0:
@@ -419,7 +474,7 @@ def extract_stimuls(img: np.ndarray, method = "brightness"):
                                             stimul_values=x), stimuls_brightnesses))
         return stimuls
 
-def show_contours(img:np.ndarray, contours: list[np.ndarray]):
+def show_contours(img:np.ndarray, contours:list[np.ndarray]):
     """some txt
     Args:
         img: 2D np.array respresenting 1 band of input image
@@ -442,3 +497,8 @@ def show_contours(img:np.ndarray, contours: list[np.ndarray]):
     ax.set_xticks([])
     ax.set_yticks([])
     plt.show()
+
+def find_contour_area(contour:np.ndarray):
+    """работает ток для замкнутых контуров, внутри них считает область"""
+    return 0.5 * np.abs(np.dot(contour[:, 0], 
+                    np.roll(contour[:, 1], 1)) - np.dot(contour[:, 1], np.roll(contour[:, 0], 1)))

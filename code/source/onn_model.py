@@ -1,9 +1,10 @@
 from copy import deepcopy
-from typing import Dict
+from typing import Dict, Any
 from skimage import measure
 import numpy as np
 from source.datasets import HyperSpectralData
-from source.utils import extract_stimuls, show_contours
+from source.hyperperams_opt import optimize_cont_extr_hyperparams
+from source.utils import *
 from source.oscillators import CentralOscillator, PeripheralOscillator
 from source.stimul import Stimul
 
@@ -18,13 +19,24 @@ class OnnModule():
         """somt txt"""
         pass
 
+    def optimize_hyperparams(self, dataset: HyperSpectralData):
+        """some txt"""
+        pass
+
+
 class OnnContourExtractionModule(OnnModule):
 
     def __init__(self, module_name):
         super().__init__(module_name)
         self.contours: np.ndarray
+        self.best_params: Dict[str, Any]
     
-    def run(self, img: np.ndarray, find_cont_method:str = "library", draw_contours:bool = True):
+    def run(self, 
+            img: np.ndarray, 
+            find_cont_method:str = "library", 
+            draw_contours:bool = True,
+            level_value:str = 0.7,
+            cont_area_threshold_percent:int = 1):
         """some txt
         Args:
             img: 2D np.array of shape HxW
@@ -32,7 +44,7 @@ class OnnContourExtractionModule(OnnModule):
             3D np.array of representing contour lines for each spectral band
         """
         if find_cont_method == "library":
-            self.extract_cont_library(img)
+            self.extract_cont_library(img, level_value=level_value)
 
         if draw_contours:
             try:
@@ -40,12 +52,32 @@ class OnnContourExtractionModule(OnnModule):
             except KeyError:
                 print("Extract contours module doesnt detect any contours( Try to change params")  # сделать такие сообщения как логи
 
+        self.postprocess_contours(img_shape=img.shape, 
+                                  cont_area_threshold_percent=cont_area_threshold_percent)
+
         return self.contours
     
-    def extract_cont_library(self, img: np.ndarray):
+    def extract_cont_library(self, img: np.ndarray, level_value:float=None):
         """some txt"""
-        contours = measure.find_contours(img)
+        contours = measure.find_contours(img, level=level_value)
         self.contours = contours
+
+    def postprocess_contours(self, 
+                             img_shape: list,
+                             cont_area_threshold_percent:int = 1):
+        """some txt"""
+        actual_contours = []
+        cont_area_threshold = (img_shape[0] * img_shape[1]) / 100 * cont_area_threshold_percent
+        for contour in self.contours:
+            if find_contour_area(contour) > cont_area_threshold:
+                actual_contours.append(contour)
+        self.contours = actual_contours
+
+    def optimize_hyperparams(self, dataset: HyperSpectralData, params: Params):
+        optimize_cont_extr_hyperparams(dataset=dataset)
+        self.level = params.level_value
+        self.cont_area_threshold_percent = params.cont_area_threshold_percent
+
 
 
 class OnnSelectiveAttentionModule2D(OnnModule):
@@ -58,7 +90,13 @@ class OnnSelectiveAttentionModule2D(OnnModule):
         self.stimuls: list[Stimul]
         self.att_method: str = att_method
 
-    def run(self, img: np.ndarray) -> np.ndarray:
+    def run(self, 
+            img:np.ndarray, 
+            po_num:int = 2, 
+            params_sel_method:str = "expert",
+            stimuls_num:int = 2,
+            stimuls_sel_method:str = "brightness",
+            target_brightness:int = 0) -> np.ndarray:
         """some txt
         Args:
             img: 3D np.array of shape CxHxW
@@ -67,7 +105,12 @@ class OnnSelectiveAttentionModule2D(OnnModule):
         """
         selected_area = []
         for spectral_band_img in img:
-            self.setup_oscillators(spectral_band_img)
+            self.setup_oscillators(img=spectral_band_img, 
+                                   po_num=po_num, 
+                                   params_sel_method=params_sel_method,
+                                   stimuls_num=stimuls_num,
+                                   stimuls_sel_method=stimuls_sel_method,
+                                   target_brightness=target_brightness)
             new_selection = self.perform_selection()
             if not(isinstance(new_selection, int)):
                 if self.att_method == "separate":
@@ -85,24 +128,45 @@ class OnnSelectiveAttentionModule2D(OnnModule):
             return img
         return np.asarray(selected_area)
     
-    def generate_oscillators_params(self, method:str = "expert"):
-        params = np.ones(len(self.stimuls)) * 10
-        params[0] = 123
+    def generate_oscillators_params(self, method:str = "expert", target_brightness:int = 0):
+        if method == "expert":
+            # Same params for all
+            params = np.ones(len(self.stimuls)) * 10
+
+            # bigger param for closest to target stimul
+            stimul_values = np.array([x.stimul_values for x in self.stimuls])
+            idx = (np.abs(stimul_values - target_brightness)).argmin()
+            params[idx] = params[idx] * 15 + 23
+            
         return params
     
-    def setup_oscillators(self, img: np.array):
+    def setup_oscillators(self, 
+                          img: np.array, 
+                          po_num:int = 2, 
+                          params_sel_method:str = "expert",
+                          stimuls_num:int = 2,
+                          stimuls_sel_method:str = "brightness",
+                          target_brightness:int = 0):
         """select area of interest (where approximately target is located)"""
         self.periferal_oscillators = []
-        self.stimuls = extract_stimuls(img)
+        self.stimuls = extract_stimuls(img=img,
+                                       stimuls_num=stimuls_num,
+                                       method=stimuls_sel_method)
+
         co_freq = np.mean(np.asarray(list(map(lambda x: x.stimul_values, self.stimuls)), dtype="object"))
-        params = self.generate_oscillators_params()
+        params = self.generate_oscillators_params(method=params_sel_method, 
+                                                  target_brightness=target_brightness)
+
         self.central_oscillator = CentralOscillator(freq=co_freq,
                                                     phase=1,
                                                     params=params)
         
         for i, stimul in enumerate(self.stimuls):
             self.periferal_oscillators.append([])
-            self.generate_periferal_oscillators(stimul=stimul, stimul_id=i, alpha=params[i])
+            self.generate_periferal_oscillators(stimul=stimul, 
+                                                stimul_id=i, 
+                                                alpha=params[i],
+                                                n=po_num)
 
         self.periferal_oscillators = np.asarray(self.periferal_oscillators)
         
@@ -196,7 +260,16 @@ class OnnModel2D(OnnModel):
         super().__init__(modules, model_name)
 
     
-    def run(self, dataset: HyperSpectralData):
+    def run(self, 
+            dataset: HyperSpectralData,
+            po_num:int = 2, 
+            params_sel_method:str = "expert",
+            stimuls_num:int = 2,
+            stimuls_sel_method:str = "brightness",
+            find_cont_method:str = "library", 
+            draw_contours:bool = True,
+            level_value:str = None,
+            cont_area_threshold_percent:int = 1):
         """some txt"""
         segmented_samples = []
 
@@ -204,7 +277,12 @@ class OnnModel2D(OnnModel):
             raise KeyError("Module SelectiveAtt are not in model modules list, but is necessary")
               
         for sample in dataset.samples:
-            area_of_interest_mask = self.modules["SelectiveAtt"].run(sample.band_img)
+            area_of_interest_mask = self.modules["SelectiveAtt"].run(img=sample.band_img,
+                                                                     po_num=po_num, 
+                                                                     params_sel_method=params_sel_method, 
+                                                                     stimuls_num=stimuls_num,
+                                                                     stimuls_sel_method=stimuls_sel_method,
+                                                                     target_brightness=sample.target_brightness)
 
             if self.modules["SelectiveAtt"].att_method == "separate":
                 iterate_bands_over = area_of_interest_mask
@@ -229,7 +307,11 @@ class OnnModel2D(OnnModel):
                 area_of_interest = area_of_interest[:,~(area_of_interest==-1).all(0)]
 
                 try:
-                    contours = self.modules["ContourExtr"].run(area_of_interest)
+                    contours = self.modules["ContourExtr"].run(img=area_of_interest,
+                                                               find_cont_method=find_cont_method, 
+                                                               draw_contours=draw_contours,
+                                                               level_value=level_value,
+                                                               cont_area_threshold_percent=cont_area_threshold_percent)
                 except KeyError:
                     segmented_on_bands[dataset.selected_bands[i]] = area_of_interest
                     continue

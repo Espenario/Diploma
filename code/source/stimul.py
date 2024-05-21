@@ -11,7 +11,8 @@ class Stimul():
 
 class Sample():
 
-    def __init__(self, original_img, band_img, labels):
+    def __init__(self, original_img, band_img, labels, target_brightness):
         self.original_img = original_img
         self.band_img = band_img
         self.labels = labels
+        self.target_brightness = target_brightness
