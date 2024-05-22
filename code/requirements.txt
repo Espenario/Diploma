@@ -8,3 +8,4 @@ imageio
 scikit-image
 Pillow
 optuna
+opencv-python

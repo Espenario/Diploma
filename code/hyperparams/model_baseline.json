@@ -1,0 +1,16 @@
+{
+    "band_sel_method": "expert",
+    "num_samples": 3,
+    "sample_height": 100,
+    "sample_width": 100,
+    "threshold": 100,
+    "num_of_bands": 4,
+    "po_num": 2,
+    "params_sel_method": "simple_random",
+    "stimuls_num": 2,
+    "stimuls_sel_method": "brightness",
+    "find_cont_method": "library",
+    "draw_contours": false,
+    "level_value": null,
+    "cont_area_threshold_percent": 1
+}

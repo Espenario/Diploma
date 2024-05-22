@@ -2,7 +2,7 @@
 from copy import deepcopy
 import random
 import os
-import re
+import cv2
 import json
 import numpy as np
 from sklearn.metrics import confusion_matrix
@@ -25,6 +25,25 @@ HYPERPARAMS = {
     "OnnContExtrModule": ["find_cont_method", "draw_contours", "cont_area_threshold_percent",
                           "level_value"]
 }
+
+DEFAULT_HYPERPARAMS = {
+    "band_sel_method": "expert", 
+    "num_samples": 3, 
+    "sample_height": 100, 
+    "sample_width": 100, 
+    "threshold": 100, 
+    "num_of_bands": 4,
+    "po_num": 2,
+    "params_sel_method": "expert", 
+    "stimuls_num": 2, 
+    "stimuls_sel_method": "brightness",
+    "find_cont_method": "library", 
+    "draw_contours": False, 
+    "level_value": None,
+    "cont_area_threshold_percent": 1,   
+}
+
+HYPERPARAMS_DIR = r".\hyperparams"
 
 class Params():
     """Class that loads hyperparameters from a json file.
@@ -342,40 +361,48 @@ def show_results(img:np.ndarray, segmented: Result, gt: np.ndarray, rgb_bands:li
         segmented: Result object
         gt: 2D ground truth
     """
-    # Ensure the input arrays have compatible shapes
-    # if segmented.shape != img.shape[:2]:
-    #     raise ValueError("Segmentation result and image must have compatible shapes")
-
-    # Create a color map for the ground truth mask
-    color_map = plt.get_cmap('jet')
-    
     # Normalize the ground truth mask for coloring
     gt_mask_normalized = gt.astype(float) / gt.max()
-    
-    # Apply the color map to the ground truth mask
-    gt_colored = color_map(gt_mask_normalized)
 
     rgb = spectral.get_rgb(img, rgb_bands)
     rgb /= np.max(rgb)
     rgb = np.asarray(255 * rgb, dtype='uint8')
 
-    # Display the original image, segmentation result, and overlay
-    plt.figure(figsize=(15, 5))
+    best_band_img = deepcopy(segmented.sample[segmented.best_band_id])
+
+    segmented_mask = np.where(best_band_img != 0, 1, 0)
+    segmented_mask_normalized = segmented_mask.astype(float) / segmented_mask.max()
+
+    cv2.namedWindow('Results', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('Results', 800, 400)  # Установка нового размера окна
     
-    plt.subplot(1, 3, 1)
-    plt.title(f"Original Image, Shape{img.shape[:3]}")
-    plt.imshow(rgb)
-    plt.axis('off')
-    
-    plt.subplot(1, 3, 2)
-    plt.title(f"Segmentation Result, Shape{segmented.sample[segmented.best_band_id].shape}, Metric {segmented.best_score}")
-    plt.imshow(segmented.sample[segmented.best_band_id])
-    plt.axis('off')
-    
-    plt.subplot(1, 3, 3)
-    plt.title(f"Segmentation with GT Overlay, Target class {target_class}")
-    plt.imshow(gt_colored[..., :4])
-    plt.axis('off')
+    segmented_mask_normalized = np.tile(segmented_mask_normalized, (3, 1, 1)).transpose(1, 2, 0)
+    gt_mask_normalized = np.tile(gt_mask_normalized, (3, 1, 1)).transpose(1, 2, 0)
+
+    masked_image = rgb.copy()
+    masked_image.resize(segmented_mask_normalized.shape)
+    # gt_mask_normalized = gt_mask_normalized.resize(segmented_mask_normalized.shape)
+
+    masked_image_segmented = np.where(segmented_mask_normalized.astype(int),
+                            np.array([0,255,0], dtype='uint8'),
+                            masked_image)
+
+    masked_image_gt = np.where(gt_mask_normalized.astype(int),
+                            np.array([0,0,255], dtype='uint8'),
+                            masked_image)
+
+    masked_image_segmented = masked_image_segmented.astype(np.uint8)
+    masked_image_gt = masked_image_gt.astype(np.uint8)
+
+    segmented_img = rgb * 0.5 + masked_image_segmented * 0.25 + masked_image_gt * 0.25
+    segmented_img = segmented_img.astype(np.uint8)
+
+    combined_image = cv2.hconcat([rgb, segmented_img])
+
+    cv2.imshow('Results', combined_image)
+
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     plt.show()
 
@@ -431,13 +458,15 @@ def calculate_iou(true: np.ndarray, pred: np.ndarray, target_class_id: int):
         true: 2D gt of sample (1 if pixel is target class, 0 otherwise)
         pred: 2D prediction (structure similar to gt)
     """
-    if true.shape != pred.shape:
-        return 0    # temporary solution? or no...
-        raise ValueError("Input arrays must have the same shape")
+    # if true.shape != pred.shape:
+    #     print("---------------")
+    #     return 1.0  # переделать, так как модуль селективного внимания обрезает фотку и нуэно проверять обрезанную уже (в выводе тоде самое)
+    #     # raise ValueError("Input arrays must have the same shape")
     
+    true_resized = np.resize(true, pred.shape)  # возможно неправильно работает
     # Calculate the intersection and union
-    intersection = np.logical_and(true==target_class_id, pred==target_class_id)
-    union = np.logical_or(true==target_class_id, pred==target_class_id)
+    intersection = np.logical_and(true_resized==target_class_id, pred==target_class_id)
+    union = np.logical_or(true_resized==target_class_id, pred==target_class_id)
     
     if np.sum(union) == 0:
         iou = 0.0  # Avoid division by zero
@@ -481,13 +510,10 @@ def show_contours(img:np.ndarray, contours:list[np.ndarray]):
         contours: list of selected contours for this img
     """
     fig, ax = plt.subplots()
-
     img = np.asarray([img])
-
     img = img.reshape((img.shape[1], img.shape[2], img.shape[0]))
 
     img = spectral.get_rgb(img, [0])
-
     ax.imshow(img)
 
     for contour in contours:
@@ -502,3 +528,17 @@ def find_contour_area(contour:np.ndarray):
     """работает ток для замкнутых контуров, внутри них считает область"""
     return 0.5 * np.abs(np.dot(contour[:, 0], 
                     np.roll(contour[:, 1], 1)) - np.dot(contour[:, 1], np.roll(contour[:, 0], 1)))
+
+def check_default_json_file():
+    """создает базовый json файл с гиперпараметрами в директории code/hyperparams"""
+    file_name = 'model_baseline.json'
+    dir = HYPERPARAMS_DIR
+
+    # Проверка наличия файла
+    file_path = os.path.join(dir, file_name)
+    if not os.path.exists(file_path):
+
+        with open(file_path, 'w') as f:
+            json.dump(DEFAULT_HYPERPARAMS, f, indent=4)
+
+    return file_path

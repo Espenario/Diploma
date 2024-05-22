@@ -3,7 +3,7 @@ from typing import Dict, Any
 from skimage import measure
 import numpy as np
 from source.datasets import HyperSpectralData
-from source.hyperperams_opt import optimize_cont_extr_hyperparams
+from source.hyperperams_opt import optimize_cont_extr_hyperparams, optimize_sel_att_hyperparams
 from source.utils import *
 from source.oscillators import CentralOscillator, PeripheralOscillator
 from source.stimul import Stimul
@@ -19,7 +19,7 @@ class OnnModule():
         """somt txt"""
         pass
 
-    def optimize_hyperparams(self, dataset: HyperSpectralData):
+    def optimize_hyperparams(self, dataset: HyperSpectralData, params: Params):
         """some txt"""
         pass
 
@@ -34,7 +34,7 @@ class OnnContourExtractionModule(OnnModule):
     def run(self, 
             img: np.ndarray, 
             find_cont_method:str = "library", 
-            draw_contours:bool = True,
+            draw_contours:bool = False,
             level_value:str = 0.7,
             cont_area_threshold_percent:int = 1):
         """some txt
@@ -74,7 +74,7 @@ class OnnContourExtractionModule(OnnModule):
         self.contours = actual_contours
 
     def optimize_hyperparams(self, dataset: HyperSpectralData, params: Params):
-        optimize_cont_extr_hyperparams(dataset=dataset)
+        optimize_cont_extr_hyperparams(cont_extr_module=self, dataset=dataset, params=params)
         self.level = params.level_value
         self.cont_area_threshold_percent = params.cont_area_threshold_percent
 
@@ -93,10 +93,11 @@ class OnnSelectiveAttentionModule2D(OnnModule):
     def run(self, 
             img:np.ndarray, 
             po_num:int = 2, 
-            params_sel_method:str = "expert",
+            params_sel_method:str = "simple_random",
             stimuls_num:int = 2,
             stimuls_sel_method:str = "brightness",
-            target_brightness:int = 0) -> np.ndarray:
+            osc_params:int = [],
+            target_brightness:list = []) -> np.ndarray:
         """some txt
         Args:
             img: 3D np.array of shape CxHxW
@@ -104,48 +105,51 @@ class OnnSelectiveAttentionModule2D(OnnModule):
             3D np.array of image shape with 0 representiong pixels without attention
         """
         selected_area = []
-        for spectral_band_img in img:
+        for i, spectral_band_img in enumerate(img):
             self.setup_oscillators(img=spectral_band_img, 
                                    po_num=po_num, 
                                    params_sel_method=params_sel_method,
                                    stimuls_num=stimuls_num,
                                    stimuls_sel_method=stimuls_sel_method,
-                                   target_brightness=target_brightness)
+                                   osc_params=osc_params,
+                                   target_brightness=target_brightness[i])
             new_selection = self.perform_selection()
-            if not(isinstance(new_selection, int)):
-                if self.att_method == "separate":
-                    selected_area.append(new_selection)
-                if self.att_method == "intersect":
-                    if len(selected_area) == 0:
-                        selected_area = new_selection
-                    else:
-                        selected_area[selected_area != new_selection] = 0
-                
-        # if self.att_method == "separate":
-        #     return np.asarray(selected_area)
-        # if self.att_method == "intersect":
+            if self.att_method == "separate":
+                selected_area.append(new_selection)
+            if self.att_method == "intersect":
+                if len(selected_area) == 0:
+                    selected_area = new_selection
+                else:
+                    selected_area[selected_area != new_selection] = 0
+
+        selected_area = np.asarray(selected_area)
+
         if len(selected_area) == 0:
             return img
-        return np.asarray(selected_area)
+        return selected_area
     
-    def generate_oscillators_params(self, method:str = "expert", target_brightness:int = 0):
-        if method == "expert":
+    def generate_oscillators_params(self, method:str = "simple_random", exp_params:list = [], target_brightness:int = 0):
+        if method == "expert" and len(exp_params) == len(self.stimuls):
+            params = exp_params
+
+        if method == "simple_random":
             # Same params for all
             params = np.ones(len(self.stimuls)) * 10
 
             # bigger param for closest to target stimul
-            stimul_values = np.array([x.stimul_values for x in self.stimuls])
+            stimul_values = np.array([x.stimul_values.mean() for x in self.stimuls])
             idx = (np.abs(stimul_values - target_brightness)).argmin()
             params[idx] = params[idx] * 15 + 23
-            
+
         return params
     
     def setup_oscillators(self, 
                           img: np.array, 
                           po_num:int = 2, 
-                          params_sel_method:str = "expert",
+                          params_sel_method:str = "simple_random",
                           stimuls_num:int = 2,
                           stimuls_sel_method:str = "brightness",
+                          osc_params:list = [],
                           target_brightness:int = 0):
         """select area of interest (where approximately target is located)"""
         self.periferal_oscillators = []
@@ -155,7 +159,8 @@ class OnnSelectiveAttentionModule2D(OnnModule):
 
         co_freq = np.mean(np.asarray(list(map(lambda x: x.stimul_values, self.stimuls)), dtype="object"))
         params = self.generate_oscillators_params(method=params_sel_method, 
-                                                  target_brightness=target_brightness)
+                                                  target_brightness=target_brightness,
+                                                  exp_params=osc_params)
 
         self.central_oscillator = CentralOscillator(freq=co_freq,
                                                     phase=1,
@@ -232,9 +237,11 @@ class OnnSelectiveAttentionModule2D(OnnModule):
 
         if final_sync_state == "ps":
             return self.stimuls[id].sub_img
-        if final_sync_state == "gs":
-            return self.stimuls[0].begin_img
-        return 0
+        
+        return self.stimuls[0].begin_img
+    
+    def optimize_hyperparams(self, dataset: HyperSpectralData, params: Params):
+        optimize_sel_att_hyperparams(self, dataset=dataset, params=params)
 
 class OnnModel():
 
@@ -259,11 +266,11 @@ class OnnModel2D(OnnModel):
         """some txt"""
         super().__init__(modules, model_name)
 
-    
     def run(self, 
             dataset: HyperSpectralData,
             po_num:int = 2, 
             params_sel_method:str = "expert",
+            osc_params: list = [],
             stimuls_num:int = 2,
             stimuls_sel_method:str = "brightness",
             find_cont_method:str = "library", 
@@ -282,6 +289,7 @@ class OnnModel2D(OnnModel):
                                                                      params_sel_method=params_sel_method, 
                                                                      stimuls_num=stimuls_num,
                                                                      stimuls_sel_method=stimuls_sel_method,
+                                                                     osc_params=osc_params,
                                                                      target_brightness=sample.target_brightness)
 
             if self.modules["SelectiveAtt"].att_method == "separate":
@@ -302,7 +310,7 @@ class OnnModel2D(OnnModel):
                     # verify that only current stimul represented in area_of_interest brightness values
                     area_of_interest[area_of_interest != area_of_interest_mask] = -1
 
-                # crop the area to minimuze furthewr calculations
+                # crop the area to minimuze further calculations
                 area_of_interest = area_of_interest[~np.all(area_of_interest == -1, axis=1)]
                 area_of_interest = area_of_interest[:,~(area_of_interest==-1).all(0)]
 
