@@ -542,3 +542,127 @@ def check_default_json_file():
             json.dump(DEFAULT_HYPERPARAMS, f, indent=4)
 
     return file_path
+
+def calculate_contour_points_simple(img):
+    """some txt"""
+    const1 = 2
+    const2 = -0.5
+    contour = np.zeros_like(img)
+    eps = 1e-6
+    change_dir = 0
+    grad_x, grad_y, grad_xxx, grad_yyy = compute_derivatives(img)
+    for i, row in enumerate(img):
+        for j, col in enumerate(row):
+            change_dir = 0
+            norm_g = np.linalg.norm((grad_x[i, j], grad_y[i, j]))
+
+            print(grad_x[i, j], grad_y[i, j])
+
+            # p_minus_d_x = cv2.Sobel(grad_x - eps, cv2.CV_64F, 1, 0, ksize=3)[i, j]
+            # p_plus_d_x = cv2.Sobel(grad_x + eps, cv2.CV_64F, 1, 0, ksize=3)[i, j]
+            # p_minus_d_y = cv2.Sobel(grad_y - eps, cv2.CV_64F, 0, 1, ksize=3)[i, j]
+            # p_plus_d_y = cv2.Sobel(grad_y + eps, cv2.CV_64F, 0, 1, ksize=3)[i, j]
+
+            grad_xx = cv2.Sobel(grad_x, cv2.CV_64F, 1, 0, ksize=3)
+            grad_yy = cv2.Sobel(grad_y, cv2.CV_64F, 0, 1, ksize=3)
+
+            # с этим проблема, не работает
+            if (grad_xx[max(0, i - 1), j] * grad_xx[min(i, img.shape[0] - 1), j] < 0) or \
+               (grad_yy[i, max(0, j - 1)] * grad_yy[i, min(j, img.shape[1] - 1)] < 0):
+                change_dir = 1
+                print("--------")
+
+            if (grad_xxx[i, j] < const2 and grad_yyy[i, j] < const2) and \
+                (norm_g > const1):
+                contour[i, j] = 1
+                
+    return contour
+
+def compute_derivatives(img, kernel_size = 1):
+    
+    grad_x = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=kernel_size)
+    grad_y = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=kernel_size)
+    
+    grad_xx = cv2.Sobel(grad_x, cv2.CV_64F, 1, 0, ksize=kernel_size)
+    grad_yy = cv2.Sobel(grad_y, cv2.CV_64F, 0, 1, ksize=kernel_size)
+
+    grad_xxx = cv2.Sobel(grad_xx, cv2.CV_64F, 1, 0, ksize=kernel_size)
+    grad_yyy = cv2.Sobel(grad_yy, cv2.CV_64F, 0, 1, ksize=kernel_size)
+    
+    return grad_x, grad_y, grad_xx, grad_yy, grad_xxx, grad_yyy
+
+def find_most_common_brightness(img):
+    """some txt"""
+    unique, counts = np.unique(img, return_counts=True)
+    brightness_counts = dict(zip(unique, counts))
+    most_frequent_brightness = max(brightness_counts, key=brightness_counts.get)
+    return most_frequent_brightness
+
+def find_largest_square(image, min_size = 5):
+    """some txt"""
+    max_square_size = 0
+    max_square_coords = [0, 0]
+
+    for i in range(len(image)):
+        for j in range(len(image[0])):
+            if image[i][j] > 0:
+                square_size = 1
+                while (i + square_size < len(image) and j + square_size < len(image[0]) and
+                       all(image[i + k][j:j + square_size + 1]) for k in range(square_size) and
+                       all(image[k][j + square_size] for k in range(square_size))):
+                    square_size += 1
+                if square_size >= min_size and square_size > max_square_size:
+                    max_square_size = square_size
+                    max_square_coords = (i, j)
+
+    return max_square_coords, max_square_size
+
+def find_random_square(image: np.ndarray):
+    """some txt"""
+    row, col = image.shape
+    square_size = min(row, col)
+    found = False
+
+    while not found and square_size > 0:
+        start_row = random.randint(0, row - square_size)
+        start_col = random.randint(0, col - square_size)
+        subimage = image[start_row:start_row + square_size, start_col:start_col + square_size]
+
+        if np.all(subimage > 0):
+            found = True
+        else:
+            square_size -= 1
+
+    if found:
+        return (start_row, start_col), square_size
+    else:
+        return None, 0
+    
+def linear_descending_to_0(t):
+    """some txt"""
+    return max(-0.1*t + 100, 0)
+
+def square_ascending(t):
+    """some txt"""
+    return min(0.1*t**2, 400)
+
+def exp_dec_with_distance(point_1, point_2):
+    """some txt"""
+    distance = np.sqrt((point_1[0] - point_2[0])**2 + (point_1[1] - point_2[1])**2)
+    return -np.exp(distance)
+
+def periodically_continued(a, b):
+    interval = b - a
+    return lambda f: lambda x: f((x - a) % interval + a)
+
+@periodically_continued(-np.pi, np.pi)
+def g(x):
+    """some txt"""
+    if x < 0.1 and x >= 0:
+        return 10*x
+    if x < 0.2 and x >= 0.1:
+        return -4*x + 1.4
+    if x <= np.pi and x >= 0.2:
+        return -0.1*x + 0.62
+    if x < 0 and x > -np.pi:
+        return -(g(-x))
