@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List
+from typing import List, Tuple
 from source.utils import are_close
 
 class Oscillator():
@@ -76,7 +76,7 @@ class PeripheralOscillatorSegmentation(Oscillator):
         super().__init__(freq, phase)
         self.state = state
         self.level = level
-        self.delta_phase: float
+        self.delta_phase: float = 0
         
     def disable(self):
         """some txt"""
@@ -102,18 +102,21 @@ class PeripheralOscillatorSegmentationL1(PeripheralOscillatorSegmentation):
              point:list, 
              s_size:int, 
              s_start_p:list,
-             neibours:List[List[PeripheralOscillatorSegmentation, list]],
+             neibours:List[List[Tuple[PeripheralOscillatorSegmentation, list]]],
              t:int):
         """some txt"""
-        s_i = 0
-        i, j = point
-        if i > s_start_p[0] and i < s_start_p[0] + s_size and \
-           j > s_start_p[1] and j < s_start_p[1] + s_size:
-            s_i = 1
-
-        delta_phase = self.phase - s_i * w2(t)*np.sin(central_oscillator.phase - self.phase) + \
-                      w3(t) / len(neibours) * sum(list(map(lambda x: np.sin(x[0].phase - self.phase), neibours)))
-        self.delta_phase = delta_phase   
+        if self.state == 1:
+            s_i = 0
+            i, j = point
+            if i > s_start_p[0] and i < s_start_p[0] + s_size and \
+            j > s_start_p[1] and j < s_start_p[1] + s_size:
+                s_i = 1
+            
+            active_neibours = [x for x in neibours if x[0].state == 1]
+            
+            delta_phase = self.phase - s_i * w2(t)*np.sin(central_oscillator.phase - self.phase) + \
+                        w3(t) / len(active_neibours) * sum(list(map(lambda x: np.sin(x[0].phase - self.phase), active_neibours)))
+            self.delta_phase = delta_phase   
              
 class PeripheralOscillatorSegmentationL2(PeripheralOscillatorSegmentation):
 
@@ -123,15 +126,17 @@ class PeripheralOscillatorSegmentationL2(PeripheralOscillatorSegmentation):
 
     def step(self,
              w4:callable,
-             neibours:List[List[PeripheralOscillatorSegmentation, list]],
-             senders_to_l2:List[List[PeripheralOscillatorSegmentation, list]],
+             neibours:List[List[Tuple[PeripheralOscillatorSegmentation, list]]],
+             senders_to_l2:List[List[Tuple[PeripheralOscillatorSegmentation, list]]],
              w5:callable,
              point:list,
              beta:float,
              t:int):
         
+        active_senders_to_l2 = [x for x in senders_to_l2 if x[0].state == 1]
+        
         delta_phase = self.freq + w4(t) / len(neibours) * sum(list(map(lambda x: np.sin(x[0].phase - self.phase), neibours))) + \
-                      sum(list(map(lambda x: w5(point,x[1]) * np.sin(x[0].phase - self.phase), senders_to_l2))) / len(senders_to_l2)
+                      sum(list(map(lambda x: w5(point,x[1]) * np.sin(x[0].phase - self.phase), active_senders_to_l2))) / len(active_senders_to_l2)
         self.delta_phase = delta_phase
 
         delta_freq = beta * (self.delta_phase - self.freq)

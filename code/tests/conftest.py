@@ -1,6 +1,6 @@
 import pytest
 from source.pipelines import OnnHyperPipeline
-from source.onn_model import OnnModel2D, OnnSelectiveAttentionModule2D
+from source.onn_model import *
 
 @pytest.fixture(scope="session")
 def onn_pipeline_basic():
@@ -19,6 +19,21 @@ def onn_pipeline_fully_set(onn_pipeline_basic: OnnHyperPipeline):
 def onn_model_attention_only():
     model = OnnModel2D(model_name="attention_only")
     model.add_module(OnnSelectiveAttentionModule2D("SelectiveAtt"))
+    return model
+
+@pytest.fixture(scope="session")
+def onn_model_att_cont():
+    model = OnnModel2D(model_name="att_cont")
+    model.add_module(OnnSelectiveAttentionModule2D("SelectiveAtt"))
+    model.add_module(OnnContourExtractionModule("ContourExtr"))
+    return model
+
+@pytest.fixture(scope="session")
+def onn_model_full():
+    model = OnnModel2D(model_name="att_cont")
+    model.add_module(OnnSelectiveAttentionModule2D("SelectiveAtt"))
+    model.add_module(OnnContourExtractionModule("ContourExtr"))
+    model.add_module(OnnSegmentationModule("Segmentation"))
     return model
 
 @pytest.fixture(scope="session")

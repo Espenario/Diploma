@@ -97,6 +97,19 @@ class OnnSegmentationModule(OnnModule):
                 for j, _ in enumerate(row):
                     self.layer1[i, j].update()
                     self.layer2[i, j].update()
+        
+        res_image = np.zeros(self.layer1.shape)
+
+        for i, row in enumerate(self.layer1):
+            for j, elem in enumerate(row):
+                res_image[i, j] = np.abs(elem.phase - self.central_oscillator.phase)
+
+        min_val = np.min(res_image)
+        max_val = np.max(res_image)
+        scaled_res_image = 256 * (res_image - min_val) / (max_val - min_val)
+
+        return scaled_res_image 
+
 
     def get_all_neibours(self, point):
         """for l1 is 8 neighbour and for l2
@@ -126,7 +139,7 @@ class OnnSegmentationModule(OnnModule):
             
     def check_stop_condition(self):
         """some txt"""
-        if self.number_of_iters <= 1000:
+        if self.number_of_iters <= 40:
             return True
         return False
     
@@ -202,20 +215,31 @@ class OnnContourExtractionModule(OnnModule):
         if find_cont_method == "gabor_grad_scale":
             self.extract_cont_gabor_grad_scale(img, target_class_brightness)
 
+        if find_cont_method == "simple_sobel":
+            self.extract_cont_simple_sobel(img)
+
         if draw_contours:
             try:
                 show_contours(img, self.contours)
             except KeyError:
                 print("Extract contours module doesnt detect any contours( Try to change params")  # сделать такие сообщения как логи
 
-        self.postprocess_contours(img_shape=img.shape, 
-                                  cont_area_threshold_percent=cont_area_threshold_percent)
+        # self.postprocess_contours(img_shape=img.shape, 
+        #                           cont_area_threshold_percent=cont_area_threshold_percent)
 
         return self.contours
     
     def extract_cont_library(self, img: np.ndarray, level_value:float=None):
         """some txt"""
         contours = measure.find_contours(img, level=level_value)
+        self.contours = contours
+
+    def extract_cont_simple_sobel(self, img:np.ndarray):
+        """some txt
+        returns:
+            2d np.array where 1 is indicating contours and 0 otherwise
+        """
+        contours = extract_cont_simple_sobel(img)
         self.contours = contours
 
     def extract_cont_gabor_grad_scale(self, img: np.ndarray, target_class_brightness: float):

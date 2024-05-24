@@ -370,11 +370,11 @@ def show_results(img:np.ndarray, segmented: Result, gt: np.ndarray, rgb_bands:li
 
     best_band_img = deepcopy(segmented.sample[segmented.best_band_id])
 
-    segmented_mask = np.where(best_band_img != 0, 1, 0)
+    segmented_mask = np.where(best_band_img < 50, 1, 0)
     segmented_mask_normalized = segmented_mask.astype(float) / segmented_mask.max()
 
     cv2.namedWindow('Results', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('Results', 800, 400)  # Установка нового размера окна
+    cv2.resizeWindow('Results', 900, 300)  # Установка нового размера окна
     
     segmented_mask_normalized = np.tile(segmented_mask_normalized, (3, 1, 1)).transpose(1, 2, 0)
     gt_mask_normalized = np.tile(gt_mask_normalized, (3, 1, 1)).transpose(1, 2, 0)
@@ -384,8 +384,8 @@ def show_results(img:np.ndarray, segmented: Result, gt: np.ndarray, rgb_bands:li
     # gt_mask_normalized = gt_mask_normalized.resize(segmented_mask_normalized.shape)
 
     masked_image_segmented = np.where(segmented_mask_normalized.astype(int),
-                            np.array([0,255,0], dtype='uint8'),
-                            masked_image)
+                             np.array([0,255,0], dtype='uint8'),
+                             masked_image)
 
     masked_image_gt = np.where(gt_mask_normalized.astype(int),
                             np.array([0,0,255], dtype='uint8'),
@@ -397,7 +397,7 @@ def show_results(img:np.ndarray, segmented: Result, gt: np.ndarray, rgb_bands:li
     segmented_img = rgb * 0.5 + masked_image_segmented * 0.25 + masked_image_gt * 0.25
     segmented_img = segmented_img.astype(np.uint8)
 
-    combined_image = cv2.hconcat([rgb, segmented_img])
+    combined_image = cv2.hconcat([rgb, segmented_img, best_band_img])
 
     cv2.imshow('Results', combined_image)
 
@@ -516,8 +516,11 @@ def show_contours(img:np.ndarray, contours:list[np.ndarray]):
     img = spectral.get_rgb(img, [0])
     ax.imshow(img)
 
-    for contour in contours:
-        ax.plot(contour[:, 1], contour[:, 0], linewidth=2)
+    if len(contours.shape) == 3:
+        for contour in contours:
+            ax.plot(contour[:, 1], contour[:, 0], linewidth=2)
+    else:
+        ax.plot(contours[:, 1], contours[:, 0], linewidth=2)
 
     ax.axis('image')
     ax.set_xticks([])
@@ -590,6 +593,25 @@ def compute_derivatives(img, kernel_size = 1):
     grad_yyy = cv2.Sobel(grad_yy, cv2.CV_64F, 0, 1, ksize=kernel_size)
     
     return grad_x, grad_y, grad_xx, grad_yy, grad_xxx, grad_yyy
+
+def extract_cont_simple_sobel(image):
+
+    blurred_image = cv2.GaussianBlur(image, (5, 5), 0)
+
+    sobel_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    sobel_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+
+    grad_x = cv2.filter2D(blurred_image, -1, sobel_x)
+    grad_y = cv2.filter2D(blurred_image, -1, sobel_y)
+
+    magnitude = np.sqrt(grad_x**2 + grad_y**2)
+
+    magnitude = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
+    magnitude = np.uint8(magnitude)
+
+    # _, thresholded = cv2.threshold(magnitude, 50, 255, cv2.THRESH_BINARY)
+
+    return magnitude
 
 def find_most_common_brightness(img):
     """some txt"""
