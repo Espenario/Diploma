@@ -79,7 +79,7 @@ class OnnHyperPipeline(HyperPipeline):
 
     def run(self, 
             target_class: str,
-            params_path: str,
+            params_path: str = "",
             optimize_before_run:bool = False):
         """some txt
         Args:
@@ -88,7 +88,7 @@ class OnnHyperPipeline(HyperPipeline):
         """
         self.specify_target_class(target_class)
 
-        if os.path.exists(params_path):
+        if len(params_path) != 0 and os.path.exists(params_path):
             file_path = params_path
         else:
             file_path = check_default_json_file()
@@ -102,7 +102,7 @@ class OnnHyperPipeline(HyperPipeline):
         
         if optimize_before_run:     
             optimize_hyperparams(self)
-            self.params.update(params_path)
+            self.params.update(file_path)
 
         self.model.run(self.dataset, 
                        po_num=self.params.po_num, 
@@ -113,6 +113,13 @@ class OnnHyperPipeline(HyperPipeline):
                        osc_params=[self.params.dict[f"stimul_{i}"] for i in range(self.params.stimuls_num)],
                        draw_contours=self.params.draw_contours,
                        level_value=self.params.level_value,
+                       k_size=self.params.k_size,
+                       max_number_of_iters=self.params.max_number_of_iters,
+                       alpha=self.params.alpha,
+                       beta=self.params.beta,
+                       w1=self.params.w1,
+                       w4=self.params.w4,
+                       threshold=self.params.threshold,
                        cont_area_threshold_percent=self.params.cont_area_threshold_percent)
     
     def eval(self, metric:str = "iou"):

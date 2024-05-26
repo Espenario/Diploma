@@ -3,7 +3,7 @@ from typing import Dict, Any
 from skimage import measure
 import numpy as np
 from source.datasets import HyperSpectralData
-from source.hyperperams_opt import optimize_cont_extr_hyperparams, optimize_sel_att_hyperparams
+from source.hyperperams_opt import optimize_cont_extr_hyperparams, optimize_segmentation_hyperparams, optimize_sel_att_hyperparams
 from source.utils import *
 from source.GaborGradScale import GaborGradScale
 from source.oscillators import *
@@ -36,7 +36,11 @@ class OnnSegmentationModule(OnnModule):
         self.img: np.ndarray
         self.gt: np.ndarray
         self.contours: np.ndarray
+        self.neibours_dict: dict = {}
+        self.senders_to_l2_dict: dict = {}
         self.number_of_iters: int = 0
+        self.max_number_of_iters: int = 15
+        self.increase_value: float = 1
         self.begin_part_size: int = 25
         self.begin_part_coord: list
         self.w1: float
@@ -51,7 +55,14 @@ class OnnSegmentationModule(OnnModule):
     def run(self,
             img: np.ndarray,
             gt: np.ndarray,
-            contours: np.ndarray):
+            contours: np.ndarray,
+            max_number_of_iters:int = 15,
+            increase_value: float = 1,
+            alpha:float = 3,
+            beta:float = 2,
+            w1:float = 10,
+            w4:float = 6,
+            threshold:int = 30):
         """some txt
         Args:
             img: 2D np.ndarray HxW, sample image of 1 band, values are braightnesses in this band
@@ -61,9 +72,13 @@ class OnnSegmentationModule(OnnModule):
         self.gt = gt
         self.contours = contours
         self.number_of_iters = 0
-        self.setup_params()
+        self.setup_params(max_number_of_iters, increase_value, alpha, beta, w1, w4)
+        print("setup_params_done")
         self.setup_oscillators()
+        print("Setup oscillators done")
         while self.check_stop_condition():
+
+            # print(self.number_of_iters)
 
             self.central_oscillator.step(s_area_osc=self.s_area_oscillators, 
                                          w1=self.w1, 
@@ -72,17 +87,18 @@ class OnnSegmentationModule(OnnModule):
             
             for i, row in enumerate(self.layer1):
                 for j, _ in enumerate(row):
-                    neibours = self.get_all_neibours([i, j])
+                    neibours = self.neibours_dict[(i, j)]
+                    senders_to_l2 = self.senders_to_l2_dict[(i, j)]
+
                     self.layer1[i, j].step(central_oscillator = self.central_oscillator, 
                                            w2 = self.w2, 
                                            w3 = self.w3, 
                                            point = [i, j], 
                                            s_size = self.begin_part_size,
-                                           s_start = self.begin_part_coord,
+                                           s_start_p = self.begin_part_coord,
                                            neibours = neibours[0],
                                            t = self.number_of_iters)
                     
-                    senders_to_l2 = self.get_senders_to_l2([i, j])
                     self.layer2[i, j].step(w4 = self.w4,
                                            neibours = neibours[1],
                                            senders_to_l2 = senders_to_l2, 
@@ -90,6 +106,18 @@ class OnnSegmentationModule(OnnModule):
                                            point = [i, j],
                                            beta = self.beta,
                                            t = self.number_of_iters)
+                    
+            res_image = np.zeros(self.layer1.shape)
+
+            for i, row in enumerate(self.layer2):
+                for j, elem in enumerate(row):
+                    # print(np.abs(elem.phase - self.central_oscillator.phase))
+                    res_image[i, j] = np.abs(elem.phase - self.central_oscillator.phase)
+
+            min_val = np.min(res_image)
+            max_val = np.max(res_image)
+            scaled_res_image = 255 * (res_image - min_val) / (max_val - min_val)
+            cv2.imwrite(f"segm_image_t{self.number_of_iters}.png", scaled_res_image)
 
             self.number_of_iters += 1
             self.central_oscillator.update()
@@ -100,13 +128,16 @@ class OnnSegmentationModule(OnnModule):
         
         res_image = np.zeros(self.layer1.shape)
 
-        for i, row in enumerate(self.layer1):
+        for i, row in enumerate(self.layer2):
             for j, elem in enumerate(row):
+                # print(np.abs(elem.phase - self.central_oscillator.phase))
                 res_image[i, j] = np.abs(elem.phase - self.central_oscillator.phase)
 
         min_val = np.min(res_image)
         max_val = np.max(res_image)
-        scaled_res_image = 256 * (res_image - min_val) / (max_val - min_val)
+        scaled_res_image = 255 * (res_image - min_val) / (max_val - min_val)
+
+        # scaled_res_image[scaled_res_image > threshold] = 255
 
         return scaled_res_image 
 
@@ -139,16 +170,24 @@ class OnnSegmentationModule(OnnModule):
             
     def check_stop_condition(self):
         """some txt"""
-        if self.number_of_iters <= 40:
+        if self.number_of_iters <= self.max_number_of_iters:
             return True
         return False
     
-    def setup_params(self):
+    def setup_params(self,
+                     max_number_of_iters,
+                     increase_value,
+                     alpha,
+                     beta,
+                     w1,
+                     w4):
         """some txt"""
-        self.alpha = 2
-        self.beta = 3
-        self.w1 = 10
-        self.w4 = 5
+        self.max_number_of_iters = max_number_of_iters
+        self.increase_value = increase_value
+        self.alpha = alpha
+        self.beta = beta
+        self.w1 = w1
+        self.w4 = w4
         self.w2 = linear_descending_to_0
         self.w3 = square_ascending
         self.w5 = exp_dec_with_distance
@@ -166,27 +205,46 @@ class OnnSegmentationModule(OnnModule):
         self.central_oscillator = CentralOscillatorSegmentation(freq=6, phase=0)
  
         #setup inactive border oscillators
-        self.layer1 = np.where(self.contours == 1, self.layer1.disable(), self.layer1)
+        for i, row in enumerate(self.layer1):
+            for j, _ in enumerate(row):
+                neibours = self.get_all_neibours((i, j))
+                self.neibours_dict[(i, j)] = neibours
+
+                senders_to_l2 = self.get_senders_to_l2((i, j))
+                self.senders_to_l2_dict[(i, j)] = senders_to_l2
+
+                if self.contours[i, j] > 30:
+                    self.layer1[i, j].disable()
+        # self.layer1 = np.where(self.contours == 1, self.layer1.disable(), self.layer1)
 
         #setup begin square, from which segmentation starts
-        begin_part_coord, begin_part_size = find_largest_square(self.gt)
-        begin_part_size -= 1
+        begin_part_coord, begin_part_size = extract_square_subarray(self.gt)
+        print(begin_part_coord, begin_part_size, "---------")
+        begin_part_size = begin_part_size
         begin_part_coord[0] += 1
         begin_part_coord[1] += 1
         self.begin_part_coord = begin_part_coord
-        self.begin_part_size = begin_part_size**2
+        self.begin_part_size = begin_part_size
         
         #increase freq of begin square oscillators and get s_oscillators
-        increase_value = 4
         s_area_oscillators = []
         for i, row in enumerate(self.layer1):
             for j, _ in enumerate(row):
                 if i > begin_part_coord[0] and i < begin_part_coord[0] + begin_part_size and \
                    j > begin_part_coord[1] and j < begin_part_coord[1] + begin_part_size:
-                    self.layer1[i, j].freq += increase_value
+                    self.layer1[i, j].freq += self.increase_value
                     s_area_oscillators.append(self.layer1[i, j])
 
         self.s_area_oscillators = np.array(s_area_oscillators)
+    
+    def optimize_hyperparams(self,
+                             cont_extr_module, 
+                             dataset: HyperSpectralData, 
+                             params: Params):
+        optimize_segmentation_hyperparams(segm_module=self, 
+                                       cont_extr_module=cont_extr_module,
+                                       dataset=dataset, 
+                                       params=params)
 
 
 class OnnContourExtractionModule(OnnModule):
@@ -198,10 +256,11 @@ class OnnContourExtractionModule(OnnModule):
     
     def run(self, 
             img: np.ndarray, 
-            find_cont_method:str = "library", 
+            find_cont_method:str = "simple_sobel", 
             draw_contours:bool = False,
             level_value:str = 0.7,
             target_class_brightness: float = 100,
+            k_size:int = 3,
             cont_area_threshold_percent:int = 1):
         """some txt
         Args:
@@ -216,7 +275,7 @@ class OnnContourExtractionModule(OnnModule):
             self.extract_cont_gabor_grad_scale(img, target_class_brightness)
 
         if find_cont_method == "simple_sobel":
-            self.extract_cont_simple_sobel(img)
+            self.extract_cont_simple_sobel(img, k_size)
 
         if draw_contours:
             try:
@@ -234,12 +293,12 @@ class OnnContourExtractionModule(OnnModule):
         contours = measure.find_contours(img, level=level_value)
         self.contours = contours
 
-    def extract_cont_simple_sobel(self, img:np.ndarray):
+    def extract_cont_simple_sobel(self, img:np.ndarray, k_size:int = 3):
         """some txt
         returns:
             2d np.array where 1 is indicating contours and 0 otherwise
         """
-        contours = extract_cont_simple_sobel(img)
+        contours = extract_cont_simple_sobel(img, k_size=k_size)
         self.contours = contours
 
     def extract_cont_gabor_grad_scale(self, img: np.ndarray, target_class_brightness: float):
@@ -460,7 +519,15 @@ class OnnModel2D(OnnModel):
             find_cont_method:str = "library", 
             draw_contours:bool = True,
             level_value:str = None,
-            cont_area_threshold_percent:int = 1):
+            k_size:int = 5,
+            cont_area_threshold_percent:int = 1,
+            max_number_of_iters:int = 10,
+            increase_value:float = 1,
+            alpha:float = 4.0,
+            beta:float = 3.0,
+            w1:float = 1.0,
+            w4:float = 3.0,
+            threshold:int = 50):
         """some txt"""
         segmented_samples = []
 
@@ -503,13 +570,23 @@ class OnnModel2D(OnnModel):
                                                                find_cont_method=find_cont_method, 
                                                                draw_contours=draw_contours,
                                                                level_value=level_value,
+                                                               k_size=k_size,
                                                                cont_area_threshold_percent=cont_area_threshold_percent)
                 except KeyError:
                     segmented_on_bands[dataset.selected_bands[i]] = area_of_interest
                     continue
 
                 try:
-                    segmented_img = self.modules["Segmentation"].run(contours, area_of_interest)
+                    segmented_img = self.modules["Segmentation"].run(img=area_of_interest, 
+                                                                     gt=sample.labels,
+                                                                     contours=contours,
+                                                                     max_number_of_iters=max_number_of_iters,
+                                                                     increase_value = increase_value,
+                                                                     alpha=alpha,
+                                                                     beta=beta,
+                                                                     w1=w1,
+                                                                     w4=w4,
+                                                                     threshold=threshold)
                 except KeyError:
                     segmented_on_bands[dataset.selected_bands[i]] = area_of_interest
                     continue

@@ -39,7 +39,7 @@ class CentralOscillatorSegmentation(Oscillator):
     def step(self, s_area_osc: np.ndarray[Oscillator], w1:float, alpha:float, g:callable):
         """some txt"""
         vectorized_g = np.vectorize(g)
-        delta_phase = self.freq + w1 / len(s_area_osc) * np.sum(vectorized_g(s_area_osc.phase - self.phase))
+        delta_phase = self.freq + w1 / len(s_area_osc) * sum(list(map(lambda x: g(x.phase - self.phase), s_area_osc)))
         self.delta_phase = delta_phase
 
         delta_freq = alpha * (self.delta_phase - self.freq)
@@ -47,6 +47,7 @@ class CentralOscillatorSegmentation(Oscillator):
 
     def update(self):
         self.phase += self.delta_phase
+        self.phase = self.phase // (2 * np.pi)
         self.freq += self.delta_freq
 
 class PeripheralOscillatorSelAtt(Oscillator):
@@ -89,6 +90,7 @@ class PeripheralOscillatorSegmentation(Oscillator):
 
     def update(self):
         self.phase += self.delta_phase
+        self.phase = self.phase // (2 * np.pi)
 
 class PeripheralOscillatorSegmentationL1(PeripheralOscillatorSegmentation):
 
@@ -106,16 +108,17 @@ class PeripheralOscillatorSegmentationL1(PeripheralOscillatorSegmentation):
              t:int):
         """some txt"""
         if self.state == 1:
-            s_i = 0
+            s_i = 1
+            eps = 1e-6
             i, j = point
             if i > s_start_p[0] and i < s_start_p[0] + s_size and \
-            j > s_start_p[1] and j < s_start_p[1] + s_size:
-                s_i = 1
+               j > s_start_p[1] and j < s_start_p[1] + s_size:
+                s_i = 0
             
             active_neibours = [x for x in neibours if x[0].state == 1]
             
             delta_phase = self.phase - s_i * w2(t)*np.sin(central_oscillator.phase - self.phase) + \
-                        w3(t) / len(active_neibours) * sum(list(map(lambda x: np.sin(x[0].phase - self.phase), active_neibours)))
+                        w3(t) / (len(active_neibours) + eps) * sum(list(map(lambda x: np.sin(x[0].phase - self.phase), active_neibours)))
             self.delta_phase = delta_phase   
              
 class PeripheralOscillatorSegmentationL2(PeripheralOscillatorSegmentation):
@@ -125,7 +128,7 @@ class PeripheralOscillatorSegmentationL2(PeripheralOscillatorSegmentation):
         self.delta_freq:float
 
     def step(self,
-             w4:callable,
+             w4:float,
              neibours:List[List[Tuple[PeripheralOscillatorSegmentation, list]]],
              senders_to_l2:List[List[Tuple[PeripheralOscillatorSegmentation, list]]],
              w5:callable,
@@ -135,8 +138,15 @@ class PeripheralOscillatorSegmentationL2(PeripheralOscillatorSegmentation):
         
         active_senders_to_l2 = [x for x in senders_to_l2 if x[0].state == 1]
         
-        delta_phase = self.freq + w4(t) / len(neibours) * sum(list(map(lambda x: np.sin(x[0].phase - self.phase), neibours))) + \
-                      sum(list(map(lambda x: w5(point,x[1]) * np.sin(x[0].phase - self.phase), active_senders_to_l2))) / len(active_senders_to_l2)
+        eps = 1e-6
+        neibours_impact = w4 / (len(neibours) + eps) * \
+                          sum(list(map(lambda x: np.sin(x[0].phase - self.phase), neibours)))
+        
+        l1_osc_impact = sum(list(map(lambda x: w5(point,x[1]) * np.sin(x[0].phase - self.phase),  
+                                     active_senders_to_l2))) / (len(active_senders_to_l2) + eps)
+        
+        delta_phase = self.freq + neibours_impact + l1_osc_impact
+
         self.delta_phase = delta_phase
 
         delta_freq = beta * (self.delta_phase - self.freq)
@@ -144,4 +154,5 @@ class PeripheralOscillatorSegmentationL2(PeripheralOscillatorSegmentation):
 
     def update(self):
         self.phase += self.delta_phase
+        self.phase = self.phase // (2 * np.pi)
         self.freq += self.delta_freq

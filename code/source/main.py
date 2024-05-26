@@ -1,6 +1,5 @@
 from source.pipelines import OnnHyperPipeline
-from source.onn_model import OnnModel2D, OnnSelectiveAttentionModule2D, OnnContourExtractionModule
-
+from source.onn_model import *
 
 def main():
     """some txt"""
@@ -8,15 +7,15 @@ def main():
 
     onn_pipe.add_dataset(dataset_name='PaviaU')
 
-    model = OnnModel2D(model_name="attention+cont_extr")
+    model = OnnModel2D(model_name="3_module_onn")
     model.add_module(OnnSelectiveAttentionModule2D("SelectiveAtt"))
     model.add_module(OnnContourExtractionModule("ContourExtr"))
+    model.add_module(OnnSegmentationModule("Segmentation"))
 
     onn_pipe.add_model(model)
 
     onn_pipe.run(target_class='Asphalt',
-                 optimize_before_run=False, 
-                 params_path=r".\hyperparams\attention+cont_extr_4.json")
+                 optimize_before_run=True)
     onn_pipe.eval(metric = "iou")
 
     onn_pipe.show_results()

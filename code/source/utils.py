@@ -43,7 +43,7 @@ DEFAULT_HYPERPARAMS = {
     "cont_area_threshold_percent": 1,   
 }
 
-HYPERPARAMS_DIR = r".\hyperparams"
+HYPERPARAMS_DIR = r"./hyperparams"
 
 class Params():
     """Class that loads hyperparameters from a json file.
@@ -426,7 +426,7 @@ def evaluate_best_segmentation(segmented: list[dict],
             # band_segment have brightness values instead of class label, 
             # so we need to convert them into the mask with class labels
             band_segment_with_labels = deepcopy(band_segment)
-            band_segment_with_labels[band_segment_with_labels != -1] = target_class_id
+            band_segment_with_labels[band_segment_with_labels != 255] = target_class_id
             metric_value = 0
             if metric == "iou":
                 metric_value = calculate_iou(samples[i].labels, band_segment_with_labels, target_class_id)
@@ -520,7 +520,13 @@ def show_contours(img:np.ndarray, contours:list[np.ndarray]):
         for contour in contours:
             ax.plot(contour[:, 1], contour[:, 0], linewidth=2)
     else:
-        ax.plot(contours[:, 1], contours[:, 0], linewidth=2)
+        cv2.namedWindow('Contours', cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('Contours', 300, 300)  # Установка нового размера окна
+
+        cv2.imshow('Contours', contours)
+
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     ax.axis('image')
     ax.set_xticks([])
@@ -594,9 +600,9 @@ def compute_derivatives(img, kernel_size = 1):
     
     return grad_x, grad_y, grad_xx, grad_yy, grad_xxx, grad_yyy
 
-def extract_cont_simple_sobel(image):
+def extract_cont_simple_sobel(image, k_size):
 
-    blurred_image = cv2.GaussianBlur(image, (5, 5), 0)
+    blurred_image = cv2.GaussianBlur(image, (k_size, k_size), 0)
 
     sobel_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
     sobel_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
@@ -639,6 +645,16 @@ def find_largest_square(image, min_size = 5):
 
     return max_square_coords, max_square_size
 
+
+def extract_square_subarray(arr):
+    rows, cols = arr.shape
+    for size in range(min(rows, cols), 0, -1):
+        for i in range(rows - size + 1):
+            for j in range(cols - size + 1):
+                subarray = arr[i:i+size, j:j+size]
+                if np.all(subarray == 1):
+                    return [i, j], size
+
 def find_random_square(image: np.ndarray):
     """some txt"""
     row, col = image.shape
@@ -662,11 +678,11 @@ def find_random_square(image: np.ndarray):
     
 def linear_descending_to_0(t):
     """some txt"""
-    return max(-0.1*t + 100, 0)
+    return max(-0.2*t + 1, 0)
 
 def square_ascending(t):
     """some txt"""
-    return min(0.1*t**2, 400)
+    return min(0.2*t**2, 10)
 
 def exp_dec_with_distance(point_1, point_2):
     """some txt"""
