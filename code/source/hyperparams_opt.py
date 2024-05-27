@@ -139,19 +139,19 @@ def optimize_segmentation_hyperparams(segm_module, cont_extr_module, dataset: Hy
     study = optuna.create_study(direction="maximize")
     test_img = dataset.samples[0].band_img[0]
     contours = cont_extr_module.run(img=test_img)
-    study.optimize(SegmentationObjective(max_number_of_iters = 5,
+    study.optimize(SegmentationObjective(max_number_of_iters = 15,
                                          min_number_of_iters = 1,
-                                         max_w1 = 10,
+                                         max_w1 = 100,
                                          min_w1 = 1,
-                                         max_alpha = 10,
+                                         max_alpha = 100,
                                          min_alpha = 1,
-                                         max_beta = 10,
+                                         max_beta = 100,
                                          min_beta = 1,
-                                         max_w4 = 10,
+                                         max_w4 = 100,
                                          min_w4 = 1,
                                          sample=dataset.samples[0],
                                          contours=contours,
-                                         segm_module=segm_module), n_trials=70)
+                                         segm_module=segm_module), n_trials=100)
 
     for key, value in study.best_params.items():
         params.dict[key] = value

@@ -354,7 +354,7 @@ def build_dataset(mat: np.ndarray,
     
     return samples
 
-def show_results(img:np.ndarray, segmented: Result, gt: np.ndarray, rgb_bands:list, target_class:str):
+def show_results(img:np.ndarray, segmented: Result, gt: np.ndarray, rgb_bands:list, output_file:str):
     """some txt
     Args:
         img: 3D np.array HxWxC representing begin image 
@@ -397,9 +397,14 @@ def show_results(img:np.ndarray, segmented: Result, gt: np.ndarray, rgb_bands:li
     segmented_img = rgb * 0.5 + masked_image_segmented * 0.25 + masked_image_gt * 0.25
     segmented_img = segmented_img.astype(np.uint8)
 
-    combined_image = cv2.hconcat([rgb, segmented_img, best_band_img])
+    combined_image = cv2.hconcat([rgb, segmented_img])
 
     cv2.imshow('Results', combined_image)
+
+    if not(os.path.exists(output_file)):
+        os.mkdir(output_file)
+        
+    cv2.imwrite(os.path.join(output_file, 'segm_res.png'), combined_image)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -617,7 +622,7 @@ def extract_cont_simple_sobel(image, k_size):
 
     # _, thresholded = cv2.threshold(magnitude, 50, 255, cv2.THRESH_BINARY)
 
-    return magnitude
+    return np.asarray(magnitude)
 
 def find_most_common_brightness(img):
     """some txt"""
@@ -678,11 +683,11 @@ def find_random_square(image: np.ndarray):
     
 def linear_descending_to_0(t):
     """some txt"""
-    return max(-0.2*t + 1, 0)
+    return max(-0.1*t + 7, 0)
 
 def square_ascending(t):
     """some txt"""
-    return min(0.2*t**2, 10)
+    return min(0.4*t**2, 25)
 
 def exp_dec_with_distance(point_1, point_2):
     """some txt"""

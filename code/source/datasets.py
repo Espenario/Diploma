@@ -151,7 +151,7 @@ class HyperSpectralData():
         # _ = explore_spectrums(self.data[0], self.gt, self.labels)
     
     def select_chanels(self, method = "expert", n = 4):
-        """some txt"""
+        """method which defines strategy of selection of spectral bands"""
         if method == "expert":
             self.selected_bands = [55, 41, 12]
         if method == "simple_opt":

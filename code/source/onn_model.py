@@ -3,7 +3,7 @@ from typing import Dict, Any
 from skimage import measure
 import numpy as np
 from source.datasets import HyperSpectralData
-from source.hyperperams_opt import optimize_cont_extr_hyperparams, optimize_segmentation_hyperparams, optimize_sel_att_hyperparams
+from source.hyperparams_opt import optimize_cont_extr_hyperparams, optimize_segmentation_hyperparams, optimize_sel_att_hyperparams
 from source.utils import *
 from source.GaborGradScale import GaborGradScale
 from source.oscillators import *
@@ -73,9 +73,9 @@ class OnnSegmentationModule(OnnModule):
         self.contours = contours
         self.number_of_iters = 0
         self.setup_params(max_number_of_iters, increase_value, alpha, beta, w1, w4)
-        print("setup_params_done")
+        # print("setup_params_done")
         self.setup_oscillators()
-        print("Setup oscillators done")
+        # print("Setup oscillators done")
         while self.check_stop_condition():
 
             # print(self.number_of_iters)
@@ -117,7 +117,7 @@ class OnnSegmentationModule(OnnModule):
             min_val = np.min(res_image)
             max_val = np.max(res_image)
             scaled_res_image = 255 * (res_image - min_val) / (max_val - min_val)
-            cv2.imwrite(f"segm_image_t{self.number_of_iters}.png", scaled_res_image)
+            # cv2.imwrite(f"segm_image_t{self.number_of_iters}.png", scaled_res_image)
 
             self.number_of_iters += 1
             self.central_oscillator.update()
@@ -137,7 +137,7 @@ class OnnSegmentationModule(OnnModule):
         max_val = np.max(res_image)
         scaled_res_image = 255 * (res_image - min_val) / (max_val - min_val)
 
-        # scaled_res_image[scaled_res_image > threshold] = 255
+        scaled_res_image[scaled_res_image > threshold] = 255
 
         return scaled_res_image 
 
@@ -213,14 +213,13 @@ class OnnSegmentationModule(OnnModule):
                 senders_to_l2 = self.get_senders_to_l2((i, j))
                 self.senders_to_l2_dict[(i, j)] = senders_to_l2
 
-                if self.contours[i, j] > 30:
+                if self.contours[i, j] > 10:
                     self.layer1[i, j].disable()
         # self.layer1 = np.where(self.contours == 1, self.layer1.disable(), self.layer1)
 
         #setup begin square, from which segmentation starts
         begin_part_coord, begin_part_size = extract_square_subarray(self.gt)
-        print(begin_part_coord, begin_part_size, "---------")
-        begin_part_size = begin_part_size
+
         begin_part_coord[0] += 1
         begin_part_coord[1] += 1
         self.begin_part_coord = begin_part_coord

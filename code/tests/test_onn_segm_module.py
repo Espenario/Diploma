@@ -20,13 +20,13 @@ def test_segm_module(onn_pipeline_fully_set: OnnHyperPipeline):
     res_img = segm_module.run(img = onn_pipeline_fully_set.dataset.samples[0].band_img[0],
                               gt = onn_pipeline_fully_set.dataset.samples[0].labels,
                               contours=contours,
-                              w1 = 30,
+                              w1 = 22,
                               alpha = 0.2,
                               beta = 0.3,
-                              w4 = 6,
-                              threshold = 15,
+                              w4 = 10,
+                              threshold = 40,
                               increase_value = 0.1,
-                              max_number_of_iters=35)
+                              max_number_of_iters=20)
     
     # cv2.namedWindow('Results', cv2.WINDOW_NORMAL)
     # cv2.resizeWindow('Results', 300, 300)  # Установка нового размера окна

@@ -1,7 +1,7 @@
 from source.dataset_loader import get_dataset
 from source.datasets import HyperSpectralData
 from source.onn_model import OnnModel
-from source.hyperperams_opt import optimize_hyperparams
+from source.hyperparams_opt import optimize_hyperparams
 from source.utils import *
 import numpy as np
 
@@ -81,11 +81,7 @@ class OnnHyperPipeline(HyperPipeline):
             target_class: str,
             params_path: str = "",
             optimize_before_run:bool = False):
-        """some txt
-        Args:
-            threshold: how much pixels of target class should have been in sample to accept it
-
-        """
+        """method to fully setup and run onn models"""
         self.specify_target_class(target_class)
 
         if len(params_path) != 0 and os.path.exists(params_path):
@@ -130,10 +126,10 @@ class OnnHyperPipeline(HyperPipeline):
                                                     metric)
         self.result = samples_result
     
-    def show_results(self):
+    def show_results(self, output_file):
         """some txt"""
         show_results(img=self.dataset.samples[0].original_img, 
                      segmented=self.result[0], 
                      gt=self.dataset.samples[0].labels,
                      rgb_bands = self.dataset.rgb,
-                     target_class = self.dataset.target_class)
+                     output_file = output_file)
