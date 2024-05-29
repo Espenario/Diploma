@@ -116,42 +116,53 @@ class SegmentationObjective:
         w4 = trial.suggest_int("w4", self.min_w4, self.max_w4)
         threshold = trial.suggest_int("threshold_segm", 10, 100)
         increase_value = trial.suggest_float("increase_value", 0.1, 20)
-        segm_res = self.segm_module.run(img = self.sample.band_img[0],
+        w2_alpha = trial.suggest_float("w2_alpha", -1, -0.1)
+        w2_beta = trial.suggest_int("w2_beta", 1, 10)
+        w3_alpha = trial.suggest_float("w3_alpha", 0.1, 1)
+        w3_beta = trial.suggest_int("w3_beta", 5, 35)
+        band_id = trial.suggest_int("band_id", 0, 23)
+        segm_res = self.segm_module.run(img = self.sample.band_img[band_id],
                                         gt = self.sample.labels,
                                         contours = self.contours,
-                                        max_number_of_iters=number_of_iters,
+                                        max_number_of_iters=7,
                                         increase_value=increase_value,
                                         alpha=alpha,
                                         beta=beta,
                                         w1=w1,
+                                        w2_alpha=w2_alpha,
+                                        w2_beta=w2_beta,
+                                        w3_alpha=w3_alpha,
+                                        w3_beta=w3_beta,
                                         w4=w4,
-                                        threshold=threshold)
+                                        threshold=30)
     
         segmented_on_bands = {}
         segmented_on_bands[0] = segm_res
-        cv2.imwrite("best_sample.png", segm_res)
-        res = evaluate_best_segmentation([segmented_on_bands], [self.sample], 1)
+        # cv2.imwrite("best_sample.png", segm_res)
+        # cv2.imwrite("orig.png", self.sample.band_img[0])
+        target_class_id = self.sample.labels[np.nonzero(self.sample.labels)][0]
+        res = evaluate_best_segmentation([segmented_on_bands], [self.sample], target_class_id)
 
         return res[0].best_score
 
 def optimize_segmentation_hyperparams(segm_module, cont_extr_module, dataset: HyperSpectralData, params: Params):
     """optimization of params of segmentation module"""
-    study = optuna.create_study(direction="maximize")
+    study = optuna.create_study(direction="maximize", sampler=optuna.samplers.RandomSampler())
     test_img = dataset.samples[0].band_img[0]
     contours = cont_extr_module.run(img=test_img)
-    study.optimize(SegmentationObjective(max_number_of_iters = 15,
+    study.optimize(SegmentationObjective(max_number_of_iters = 10,
                                          min_number_of_iters = 1,
-                                         max_w1 = 100,
+                                         max_w1 = 20,
                                          min_w1 = 1,
-                                         max_alpha = 100,
+                                         max_alpha = 20,
                                          min_alpha = 1,
-                                         max_beta = 100,
+                                         max_beta = 20,
                                          min_beta = 1,
-                                         max_w4 = 100,
+                                         max_w4 = 20,
                                          min_w4 = 1,
                                          sample=dataset.samples[0],
                                          contours=contours,
-                                         segm_module=segm_module), n_trials=100)
+                                         segm_module=segm_module), n_trials=1000, n_jobs=1)
 
     for key, value in study.best_params.items():
         params.dict[key] = value

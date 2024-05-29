@@ -406,6 +406,13 @@ def show_results(img:np.ndarray, segmented: Result, gt: np.ndarray, rgb_bands:li
         
     cv2.imwrite(os.path.join(output_file, 'segm_res.png'), combined_image)
 
+    cv2.imwrite(os.path.join(output_file, 'temp.png'), rgb * 0.65 + masked_image_gt * 0.35)
+
+    res_dict = {"metric_value": segmented.best_score, "best_band": segmented.best_band_id}
+
+    with open(os.path.join(output_file, 'metric_res.json'), 'w') as f:
+        json.dump(res_dict, f, indent=4)
+
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -657,7 +664,7 @@ def extract_square_subarray(arr):
         for i in range(rows - size + 1):
             for j in range(cols - size + 1):
                 subarray = arr[i:i+size, j:j+size]
-                if np.all(subarray == 1):
+                if np.all(subarray != 0):
                     return [i, j], size
 
 def find_random_square(image: np.ndarray):
@@ -681,13 +688,13 @@ def find_random_square(image: np.ndarray):
     else:
         return None, 0
     
-def linear_descending_to_0(t):
+def linear_descending_to_0(t, alpha, beta):
     """some txt"""
-    return max(-0.1*t + 7, 0)
+    return max(alpha*t + beta, 0)
 
-def square_ascending(t):
+def square_ascending(t, alpha, beta):
     """some txt"""
-    return min(0.4*t**2, 25)
+    return min(alpha*t**2, beta)
 
 def exp_dec_with_distance(point_1, point_2):
     """some txt"""

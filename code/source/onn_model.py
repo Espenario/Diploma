@@ -51,6 +51,10 @@ class OnnSegmentationModule(OnnModule):
         self.g: callable
         self.alpha: float
         self.beta: float
+        self.w2_alpha: float
+        self.w2_beta: float
+        self.w3_alpha: float
+        self.w3_beta: float
 
     def run(self,
             img: np.ndarray,
@@ -62,6 +66,10 @@ class OnnSegmentationModule(OnnModule):
             beta:float = 2,
             w1:float = 10,
             w4:float = 6,
+            w2_alpha:float = -0.1, 
+            w2_beta:float = 7,
+            w3_alpha:float = 0.4, 
+            w3_beta:float = 25,
             threshold:int = 30):
         """some txt
         Args:
@@ -72,13 +80,11 @@ class OnnSegmentationModule(OnnModule):
         self.gt = gt
         self.contours = contours
         self.number_of_iters = 0
-        self.setup_params(max_number_of_iters, increase_value, alpha, beta, w1, w4)
-        # print("setup_params_done")
+        self.setup_params(max_number_of_iters, increase_value, alpha, beta, w1, w4, w2_alpha, w2_beta, w3_alpha, w3_beta)
         self.setup_oscillators()
-        # print("Setup oscillators done")
         while self.check_stop_condition():
 
-            # print(self.number_of_iters)
+            print(self.number_of_iters, "------------")
 
             self.central_oscillator.step(s_area_osc=self.s_area_oscillators, 
                                          w1=self.w1, 
@@ -92,6 +98,10 @@ class OnnSegmentationModule(OnnModule):
 
                     self.layer1[i, j].step(central_oscillator = self.central_oscillator, 
                                            w2 = self.w2, 
+                                           w2_alpha = self.w2_alpha,
+                                           w2_beta = self.w2_beta,
+                                           w3_alpha = self.w3_alpha,
+                                           w3_beta = self.w3_beta,
                                            w3 = self.w3, 
                                            point = [i, j], 
                                            s_size = self.begin_part_size,
@@ -106,9 +116,16 @@ class OnnSegmentationModule(OnnModule):
                                            point = [i, j],
                                            beta = self.beta,
                                            t = self.number_of_iters)
-                    
-            res_image = np.zeros(self.layer1.shape)
 
+            self.number_of_iters += 1
+            self.central_oscillator.update()
+            for i, row in enumerate(self.layer1):
+                for j, _ in enumerate(row):
+                    self.layer1[i, j].update()
+                    self.layer2[i, j].update()
+
+            res_image = np.zeros(self.layer1.shape)
+            
             for i, row in enumerate(self.layer2):
                 for j, elem in enumerate(row):
                     # print(np.abs(elem.phase - self.central_oscillator.phase))
@@ -119,12 +136,6 @@ class OnnSegmentationModule(OnnModule):
             scaled_res_image = 255 * (res_image - min_val) / (max_val - min_val)
             # cv2.imwrite(f"segm_image_t{self.number_of_iters}.png", scaled_res_image)
 
-            self.number_of_iters += 1
-            self.central_oscillator.update()
-            for i, row in enumerate(self.layer1):
-                for j, _ in enumerate(row):
-                    self.layer1[i, j].update()
-                    self.layer2[i, j].update()
         
         res_image = np.zeros(self.layer1.shape)
 
@@ -136,6 +147,8 @@ class OnnSegmentationModule(OnnModule):
         min_val = np.min(res_image)
         max_val = np.max(res_image)
         scaled_res_image = 255 * (res_image - min_val) / (max_val - min_val)
+
+        cv2.imwrite("best_sample_orig.png", scaled_res_image)
 
         scaled_res_image[scaled_res_image > threshold] = 255
 
@@ -177,10 +190,8 @@ class OnnSegmentationModule(OnnModule):
     def setup_params(self,
                      max_number_of_iters,
                      increase_value,
-                     alpha,
-                     beta,
-                     w1,
-                     w4):
+                     alpha, beta, w1, w4,
+                     w2_alpha, w2_beta, w3_alpha, w3_beta):
         """some txt"""
         self.max_number_of_iters = max_number_of_iters
         self.increase_value = increase_value
@@ -188,6 +199,10 @@ class OnnSegmentationModule(OnnModule):
         self.beta = beta
         self.w1 = w1
         self.w4 = w4
+        self.w2_alpha = w2_alpha
+        self.w2_beta = w2_beta
+        self.w3_alpha = w3_alpha
+        self.w3_beta = w3_beta
         self.w2 = linear_descending_to_0
         self.w3 = square_ascending
         self.w5 = exp_dec_with_distance
@@ -525,6 +540,10 @@ class OnnModel2D(OnnModel):
             alpha:float = 4.0,
             beta:float = 3.0,
             w1:float = 1.0,
+            w2_alpha:float = -0.1, 
+            w2_beta:float = 7,
+            w3_alpha:float = 0.4, 
+            w3_beta:float = 25,
             w4:float = 3.0,
             threshold:int = 50):
         """some txt"""
@@ -585,6 +604,10 @@ class OnnModel2D(OnnModel):
                                                                      beta=beta,
                                                                      w1=w1,
                                                                      w4=w4,
+                                                                     w2_alpha=w2_alpha,
+                                                                     w2_beta=w2_beta,
+                                                                     w3_alpha=w3_alpha,
+                                                                     w3_beta=w3_beta,
                                                                      threshold=threshold)
                 except KeyError:
                     segmented_on_bands[dataset.selected_bands[i]] = area_of_interest

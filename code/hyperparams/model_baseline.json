@@ -1,9 +1,9 @@
 {
-    "band_sel_method": "expert",
+    "band_sel_method": "simple_opt",
     "num_samples": 3,
-    "sample_height": 100,
-    "sample_width": 100,
-    "threshold": 100,
+    "sample_height": 150,
+    "sample_width": 150,
+    "threshold": 200,
     "num_of_bands": 4,
     "po_num": 2,
     "params_sel_method": "simple_random",
@@ -35,5 +35,9 @@
     "beta": 0.3,
     "w4": 10,
     "threshold_segm": 40,
-    "increase_value": 0.1
+    "increase_value": 0.1,
+    "w2_alpha": -0.1,
+    "w2_beta": 7,
+    "w3_alpha": 0.4,
+    "w3_beta": 25
 }

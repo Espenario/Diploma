@@ -114,6 +114,10 @@ class OnnHyperPipeline(HyperPipeline):
                        alpha=self.params.alpha,
                        beta=self.params.beta,
                        w1=self.params.w1,
+                       w2_alpha=self.params.w2_alpha,
+                       w2_beta=self.params.w2_beta,
+                       w3_alpha=self.params.w3_alpha, 
+                       w3_beta=self.params.w3_beta,
                        w4=self.params.w4,
                        threshold=self.params.threshold,
                        cont_area_threshold_percent=self.params.cont_area_threshold_percent)
